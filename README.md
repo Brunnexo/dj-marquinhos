@@ -11,8 +11,9 @@ DJ Marquinhos é um bot para Discord feito em Python que toca músicas diretamen
 ## Requisitos
 Antes de instalar o DJ Marquinhos, certifique-se de que você tem os seguintes requisitos:
 - Python 3.2 ou superior
-- ffmpeg instalado e configurado no sistema
-- Um bot do Discord com um token válido
+- `ffmpeg` instalado e configurado no sistema
+- Um bot do Discord criado no [developer portal](https://discord.com/developers/applications/)
+- **Você também precisa [gerar um token de autenticação do YouTube para o seu bot](https://pytubefix.readthedocs.io/en/latest/user/auth.html)** 
 
 ## Instalação
 1. Clone este repositório:
