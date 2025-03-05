@@ -1,4 +1,5 @@
-# DJ Marquinhos
+# ![Marquinhos](images/dj.bmp) DJ Marquinhos
+
 
 DJ Marquinhos é um bot para Discord feito em Python que toca músicas diretamente do YouTube. Ele permite que os usuários adicionem músicas a uma fila e curtam suas faixas favoritas sem sair do servidor do Discord.
 
