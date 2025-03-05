@@ -1,0 +1,12 @@
+[Unit]
+Description=BOT DJ Marquinhos
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/environment
+ExecStart=/home/blima/BOT/DJ-Marquinhos/venv/bin/python /home/blima/BOT/DJ-Marquinhos/main.py
+WorkingDirectory=/home/blima/BOT/DJ-Marquinhos/
+
+[Install]
+WantedBy=network-online.target

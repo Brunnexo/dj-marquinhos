@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+env:
+  DIR: "BOT/DJ-Marquinhos"
+
+jobs:
+  create-service:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Criar serviço
+        run: |
+            if systemctl is-active --quiet dj-marquinhos.service; then
+              echo "O serviço já existe"
+            else
+              sudo cp ${GITHUB_WORKSPACE}/etc/linux/dj-marquinhos.service /etc/systemd/system/
+              echo "Serviço criado"
+              sudo systemctl daemon-reload
+              sudo systemctl enable dj-marquinhos.service
+            fi
+
+  stop-service:
+    runs-on: self-hosted
+    needs: create-service
+    steps:
+      - name: Parar serviço
+        run: |
+            sudo systemctl stop dj-marquinhos.service
+
+  deploy:
+    runs-on: self-hosted
+    needs: stop-service
+    steps:
+      - name: Instalar dependências externas
+        run: |
+          echo $HOME
+          echo "Instalando dependências externas..."
+          
+          echo "Instalando ffmpeg..."
+          sudo apt-get install -y ffmpeg
+
+          echo "Instalando dependências Python 3..."
+
+          sudo apt-get install -y python3-dev
+
+
+      - name: Copiar arquivos para pasta de trabalho
+        run: |
+          if [ ! -d "${HOME}/$DIR" ]; then
+              echo "Criando diretório ${HOME}/$DIR..."
+              mkdir -p "${HOME}/$DIR"
+          fi
+          
+          echo "Copiando arquivos para ${HOME}/$DIR..."
+          cp -r ${GITHUB_WORKSPACE}/* "${HOME}/$DIR"
+          sudo chmod -R 777 "${HOME}/$DIR"
+          
+      - name: Instalar ambiente virtual
+        run: | 
+          if [ ! -d "${HOME}/$DIR/venv" ]; then
+            echo "Instalando ambiente virtual"
+            cd "${HOME}/$DIR"
+            python3 -m venv venv
+            echo "Ativando ambiente virtual"
+            source venv/bin/activate
+            echo "Atualizando pip..."
+            pip install --upgrade pip
+
+            if [ -f "requirements.txt" ]; then
+              echo "Instalando dependências..."
+              pip install -r requirements.txt
+            fi
+          else
+            echo "Ambiente virtual já instalado!"
+          fi
+
+          echo "Instalação concluída!"
+
+  start-service:
+    runs-on: self-hosted
+    needs: [stop-service, deploy]
+    steps:
+      - name: Iniciar serviço
+        run: |
+            sudo systemctl start dj-marquinhos.service
