@@ -40,6 +40,8 @@ class EPD:
     
     def clear(self):
         self._epd.Clear(0xFF)
+        frame = self._blank()
+        self._epd.display(self._epd.getbuffer(frame))
         
     def command(self, user: str, command: str):
         self._init()
