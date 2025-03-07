@@ -4,10 +4,6 @@ KEY = 'DJ_DISCORD_TOKEN'
 import os
 import logging
 import signal
-import platform
-
-logger = logging.getLogger("main")
-logging.basicConfig(filename='bot.log', level=logging.INFO)
 
 # Imports Discord
 import discord
@@ -15,130 +11,165 @@ from discord import app_commands
 from discord.ext import tasks
 
 # Extras
-from discord_control import DiscordControl
-from youtube_client import YouTube, valid_url
-from discord_buttons import PlayerButtons
-
+import strings
 import utils
 
-display = None
+from discord_controller import DiscordController
+from discord_buttons import DiscordButtons
 
-def is_linux(): return "Linux" == platform.system()
+from mp3_platform import MP3Platform
+from youtube_platform import YouTubePlatform
 
-if is_linux():
-    from epd import EPD
-    display = EPD()
+from sound_platform import PlatformHandler, SoundPlatformException
 
 # Token
 TOKEN = os.getenv(KEY)
- 
-if not TOKEN: raise ValueError(f'Token do BOT não definido! Defina o token na variável de ambiente "{KEY}" para prosseguir com a execução.')
 
-# Permissões do Discord
+if not TOKEN: raise ValueError(strings.ERR_TOKEN.format(KEY=KEY))
+
+# Discord intents
 intents = discord.Intents.default()
 intents.presences = True
 intents.message_content = True
 intents.messages = True
 intents.members = True
 
-# Classes
 client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
-discord_control = DiscordControl(client)
 
-@tree.command(name='play', description='Tocar música a partir de um link')
-@app_commands.describe(url="URL do YouTube ou outra plataforma para tocar")
+# Classes
+tree = app_commands.CommandTree(client)
+controller = DiscordController()
+
+buttons = None
+
+# Logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
+
+def get_buttons():
+    global buttons
+    if buttons is None:
+        buttons = DiscordButtons(controller)
+        client.add_view(buttons)
+
+    return buttons
+
+@tree.command(name='play', description=strings.STR_PLAY_CMD_DESC)
+@app_commands.describe(url=strings.STR_PLAY_URL_DESC)
 async def play_command(interaction: discord.Interaction, url: str):
-    
-    global player_buttons
-    
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        if not valid_url(url):
-            await interaction.followup.send("❌ URL inválida!")
+        if not PlatformHandler.valid_url(url):
+            await interaction.followup.send(strings.ERR_INVALID_URL)
             return
         
-        title = await discord_control.play(interaction.guild, interaction.user.voice.channel, url)
+        try:
+            title = await controller.play(interaction.guild, interaction.user.voice.channel, url)
+            
+            if title: embed = utils.embed_message(description=strings.STR_PLAY_NOW_PLAYING, name=title, value=url)
+            else: embed = utils.embed_message(description=strings.STR_PLAY_QUEUEING, name=PlatformHandler(url).title(), value=url)
+            
+            await interaction.followup.send(embed=embed, view=get_buttons())
+        except SoundPlatformException as e:
+            await interaction.followup.send(str(e))
+        except Exception as e:
+            await interaction.followup.send(strings.ERR_EXCEPTION_GENERIC.format(err=str(e).lower()))
         
-        if title: embed = utils.embed_message(description="💿 Tocando agora!", name=title, value=url)
-        else: embed = utils.embed_message(description="💿 Colocando em fila...", name=YouTube(url).title(), value=url)
-        
-        await interaction.followup.send(embed=embed, view=PlayerButtons(discord_control))
-        
-@tree.command(name='queue', description='Exibir fila de reprodução')
-async def queue_commnand(interaction: discord.Interaction):
+@tree.command(name='queue', description=strings.STR_QUEUE_CMD_DESC)
+async def queue_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        await discord_control.show_queue(interaction)
+        await controller.show_queue(interaction)
 
-@tree.command(name='clear', description='Limpar fila de reprodução')
-async def queue_commnand(interaction: discord.Interaction):
+@tree.command(name='clear', description=strings.STR_CLEAR_CMD_DESC)
+async def clear_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        discord_control.clear_queue(interaction.guild)
-        await interaction.followup.send("🗑️ Tudo limpo!")
+        controller.clear_queue(interaction.guild)
+        await interaction.followup.send(strings.STR_CLEAR_REPLY)
 
-@tree.command(name='pause', description='Pausar a reprodução')
+@tree.command(name='pause', description=strings.STR_PAUSE_CMD_DESC)
 async def pause_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        discord_control.pause(interaction.guild)
-        await interaction.followup.send("⏸️ Pausado!")
+        controller.pause(interaction.guild)
+        await interaction.followup.send(strings.STR_PAUSE_REPLY)
 
-@tree.command(name='resume', description='Continuar a reprodução')
+@tree.command(name='resume', description=strings.STR_RESUME_CMD_DESC)
 async def resume_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        discord_control.resume(interaction.guild)
-        await interaction.followup.send("▶️ Continuando...")
+        controller.resume(interaction.guild)
+        await interaction.followup.send(strings.STR_RESUME_REPLY)
 
-@tree.command(name='stop', description='Parar a reprodução')
+@tree.command(name='stop', description=strings.STR_STOP_CMD_DESC)
 async def stop_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        discord_control.stop(interaction.guild)
-        await interaction.followup.send("⏹️ Para tudo!")
+        controller.stop(interaction.guild)
+        await interaction.followup.send(strings.STR_STOP_REPLY)
 
-@tree.command(name='join', description='Vou me juntar a você!')
+@tree.command(name='join', description=strings.STR_JOIN_CMD_DESC)
 async def join_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        await discord_control.join(interaction.guild, interaction.user.voice.channel)
-        await interaction.followup.send("🤠 Opa, bão!?")
+        await controller.join(interaction.guild, interaction.user.voice.channel)
+        await interaction.followup.send(strings.STR_JOIN_REPLY)
 
-@tree.command(name='leave', description='Sairei do canal de voz')
+@tree.command(name='leave', description=strings.STR_LEAVE_CMD_DESC)
 async def leave_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        await discord_control.leave(interaction.guild)
-        await interaction.followup.send("🫡 Estarei à disposição!")
+        await controller.leave(interaction.guild)
+        await interaction.followup.send(strings.STR_LEAVE_REPLY)
 
-@tree.command(name='skip', description='Pular para a próxima música')
+@tree.command(name='skip', description=strings.STR_SKIP_CMD_DESC)
 async def skip_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        discord_control.skip(interaction.guild)
-        await interaction.followup.send("⏭️ Pulando!")   
+        controller.skip(interaction.guild)
+        await interaction.followup.send(strings.STR_SKIP_REPLY)   
 
-@tree.command(name='help', description='Exibir opções de comando')
+@tree.command(name='help', description=strings.STR_HELP_CMD_DESC)
 async def help_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        show_user_command(interaction)
-        msg = "**/play [URL]** - Tocar música a partir de um link\n"
+        await interaction.followup.send(embed=utils.embed_message(description=strings.STR_HELP_AVAIL_CMDS, name=strings.STR_HELP_LIST, value=strings.STR_HELP_MSG), ephemeral=True)
+
+@client.event
+async def on_app_command_completion(interaction: discord.Interaction, command: discord.app_commands.Command):
+    print(interaction.user.name)
+    print(command.name)
+
+@client.event
+async def on_message(message: discord.Message):
+    if message.author == client.user:
+        return
+    
+    if await utils.validate_message(message):
+        if client.user.mentioned_in(message):
+            msg = message.content
+            if "play" in msg:
+                if len(message.attachments) > 0:
+                    attachment = message.attachments[0]
+                    url = attachment.url
+                    
+                    if not PlatformHandler.valid_url(url):
+                        await message.reply(strings.ERR_INVALID_URL)
+                        return
+                    
+                    try:
+                        
+                        title = await controller.play(message.guild, message.author.voice.channel, url)
+                        
+                        if title: embed = utils.embed_message(description=strings.STR_PLAY_NOW_PLAYING, name=title, value=url)
+                        else: embed = utils.embed_message(description=strings.STR_PLAY_QUEUEING, name=PlatformHandler(url).title(), value=url)
+                        
+                        await message.reply(embed=embed, view=get_buttons())
+                    except SoundPlatformException as e:
+                        await message.reply(str(e))
+                    except Exception as e:
+                        await message.reply(strings.ERR_EXCEPTION_GENERIC.format(err=str(e).lower()))
+                else:
+                    await message.reply(strings.STR_JOIN_REPLY)
         
-        msg += "**/pause** - Pausar a reprodução\n"
-        msg += "**/resume** - Continuar a reprodução\n"
-        msg += "**/skip** - Pular para a próxima música\n"
-        msg += "**/stop** - Parar a reprodução\n"
-        msg += "**/join** - Juntar-se ao canal de voz\n"
-        msg += "**/leave** - Sair do canal de voz\n"
-        msg += "**/queue** - Exibir fila de reprodução\n"
-        msg += "**/clear** - Limpar fila de reprodução\n"
-        msg += "**/help** - Exibir opções de comando (esta mensagem)\n\n"
+    
+
         
-        msg += "DJ Marquinhos criado por <@189162346063593473>"
-        
-        await interaction.followup.send(embed=utils.embed_message(description="📚 Comandos disponíveis", name="Lista", value=msg), ephemeral=True)
+
+@tasks.loop(seconds = 5)
+async def background_task():
+    pass
 
 @client.event
 async def on_connect():
@@ -147,27 +178,13 @@ async def on_connect():
 @client.event
 async def on_ready():
     await tree.sync()
-    logger.info(f'Entrei como {client.user}')
-
-def show_user_command(interaction: discord.Interaction):
-    if is_linux():
-        user = interaction.user.name
-        command = interaction.command.name
-        display.command(user, command)
+    logger.info(strings.STR_ETC_LOGIN.format(user=client.user.name))
 
 def signal_handler(sig, frame):
-    if is_linux(): display.clear()
     client.close()
-    raise SystemExit("Encerrando BOT...")
-    
+    raise SystemExit(strings.STR_ETC_CLOSING)
+
+
+PlatformHandler.show_classes()
 signal.signal(signal.SIGTERM, signal_handler)
-
-@tasks.loop(seconds = 5)
-async def background_task():
-    if is_linux():
-        display.plot()
-        display.channels(discord_control.connections_count())
-
-if is_linux(): display.splash()
-
 client.run(TOKEN)

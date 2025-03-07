@@ -7,8 +7,7 @@ epd_dir = "./waveshare_epd"
 
 if os.path.exists(epd_dir):
     sys.path.append(epd_dir)
-else:
-    print("Biblioteca não encontrada!")
+else: raise ModuleNotFoundError("waveshare_epd")
     
 from waveshare_epd import epd2in13_V4
 from PIL import Image, ImageDraw, ImageFont
