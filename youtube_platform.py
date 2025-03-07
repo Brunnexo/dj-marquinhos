@@ -4,13 +4,14 @@ from sound_platform import SoundPlatform, SoundPlatformException
 import strings
 import logging
 import re
+import os
 
 import requests
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
-
+TOKEN_JSON = os.getenv("DJ_DISCORD_YT_TOKEN")
 class YouTubePlatform(SoundPlatform):
     def __init__(self, url: str):
         self._url = url
@@ -35,7 +36,7 @@ class YouTubePlatform(SoundPlatform):
         audio = None
         
         try:
-            video: YouTube = YouTube(self._url, use_oauth=True, allow_oauth_cache=True, use_po_token=True)
+            video: YouTube = YouTube(self._url, client="WEB", use_oauth=True, allow_oauth_cache=True, use_po_token=True, token_file=TOKEN_JSON)
             streams = video.streams
             
             for itag in [141, 140, 139, 251, 250, 249, 171]:
