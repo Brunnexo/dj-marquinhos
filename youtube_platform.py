@@ -35,7 +35,7 @@ class YouTubePlatform(SoundPlatform):
         audio = None
         
         try:
-            video: YouTube = YouTube(self._url, use_oauth=True, allow_oauth_cache=True)
+            video: YouTube = YouTube(self._url, use_oauth=True, allow_oauth_cache=True, use_po_token=True)
             streams = video.streams
             
             for itag in [141, 140, 139, 251, 250, 249, 171]:
