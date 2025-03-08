@@ -54,6 +54,19 @@ def get_buttons():
 
     return buttons
 
+async def interaction_play(interaction: discord.Interaction, url: str):
+    try:
+        title = await controller.play(interaction.guild, interaction.user.voice.channel, url)
+        
+        if title: embed = utils.embed_message(description=strings.STR_PLAY_NOW_PLAYING, name=title, value=url)
+        else: embed = utils.embed_message(description=strings.STR_PLAY_QUEUEING, name=PlatformHandler(url).title(), value=url)
+        
+        await interaction.followup.send(embed=embed, view=get_buttons())
+    except SoundPlatformException as e:
+        await interaction.followup.send(str(e))
+    except Exception as e:
+        await interaction.followup.send(strings.ERR_EXCEPTION_GENERIC.format(err=str(e).lower()))
+
 @tree.command(name='play', description=strings.STR_PLAY_CMD_DESC)
 @app_commands.describe(url=strings.STR_PLAY_URL_DESC)
 async def play_command(interaction: discord.Interaction, url: str):
@@ -62,17 +75,8 @@ async def play_command(interaction: discord.Interaction, url: str):
             await interaction.followup.send(strings.ERR_INVALID_URL)
             return
         
-        try:
-            title = await controller.play(interaction.guild, interaction.user.voice.channel, url)
-            
-            if title: embed = utils.embed_message(description=strings.STR_PLAY_NOW_PLAYING, name=title, value=url)
-            else: embed = utils.embed_message(description=strings.STR_PLAY_QUEUEING, name=PlatformHandler(url).title(), value=url)
-            
-            await interaction.followup.send(embed=embed, view=get_buttons())
-        except SoundPlatformException as e:
-            await interaction.followup.send(str(e))
-        except Exception as e:
-            await interaction.followup.send(strings.ERR_EXCEPTION_GENERIC.format(err=str(e).lower()))
+        await interaction_play(interaction, url)
+
         
 @tree.command(name='queue', description=strings.STR_QUEUE_CMD_DESC)
 async def queue_command(interaction: discord.Interaction):
@@ -131,6 +135,19 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
     print(interaction.user.name)
     print(command.name)
 
+async def message_play(message: discord.Message, url: str):
+    try:
+        title = await controller.play(message.guild, message.author.voice.channel, url)
+        
+        if title: embed = utils.embed_message(description=strings.STR_PLAY_NOW_PLAYING, name=title, value=url)
+        else: embed = utils.embed_message(description=strings.STR_PLAY_QUEUEING, name=PlatformHandler(url).title(), value=url)
+        
+        await message.reply(embed=embed, view=get_buttons())
+    except SoundPlatformException as e:
+        await message.reply(str(e))
+    except Exception as e:
+        await message.reply(strings.ERR_EXCEPTION_GENERIC.format(err=str(e).lower()))
+
 @client.event
 async def on_message(message: discord.Message):
     if message.author == client.user:
@@ -139,6 +156,7 @@ async def on_message(message: discord.Message):
     if await utils.validate_message(message):
         if client.user.mentioned_in(message):
             msg = message.content
+            
             if "play" in msg:
                 if len(message.attachments) > 0:
                     attachment = message.attachments[0]
@@ -148,25 +166,17 @@ async def on_message(message: discord.Message):
                         await message.reply(strings.ERR_INVALID_URL)
                         return
                     
-                    try:
-                        
-                        title = await controller.play(message.guild, message.author.voice.channel, url)
-                        
-                        if title: embed = utils.embed_message(description=strings.STR_PLAY_NOW_PLAYING, name=title, value=url)
-                        else: embed = utils.embed_message(description=strings.STR_PLAY_QUEUEING, name=PlatformHandler(url).title(), value=url)
-                        
-                        await message.reply(embed=embed, view=get_buttons())
-                    except SoundPlatformException as e:
-                        await message.reply(str(e))
-                    except Exception as e:
-                        await message.reply(strings.ERR_EXCEPTION_GENERIC.format(err=str(e).lower()))
+                    await message_play(message, url)
                 else:
-                    await message.reply(strings.STR_JOIN_REPLY)
+                    mp3_link = utils.extract_mp3_url(msg)
+                    
+                    if not mp3_link:
+                        await message.reply(strings.STR_JOIN_REPLY)
+                    else:
+                        await message_play(message, mp3_link)
+                        
+                        
         
-    
-
-        
-
 @tasks.loop(seconds = 5)
 async def background_task():
     pass
