@@ -5,10 +5,12 @@ import psutil
 
 epd_dir = "./waveshare_epd"
 
-if os.path.exists(epd_dir):
-    sys.path.append(epd_dir)
+if os.path.exists(epd_dir): sys.path.append(epd_dir)
 else: raise ModuleNotFoundError("waveshare_epd")
-    
+
+
+from gui.gui_controller import GUIController
+
 from waveshare_epd import epd2in13_V4
 from PIL import Image, ImageDraw, ImageFont
 
@@ -17,7 +19,7 @@ font_lg = ImageFont.truetype("./font/Font.ttc", 16)
 
 splash = Image.open("./images/splash.bmp")
 
-class EPD:
+class EPD(GUIController):
     def __init__(self):
         self._epd = epd2in13_V4.EPD()
         self._plotted = False
@@ -31,7 +33,7 @@ class EPD:
         self._channels = 0
         
         
-    def _init(self):
+    def init(self):
         if not self._display_init:
             self._epd.init()
             self.clear()

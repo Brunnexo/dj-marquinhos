@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-import strings
 import logging
 
 # Logger
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
 
 class SoundPlatformException(Exception): ...
 
@@ -43,7 +42,7 @@ class PlatformHandler:
             if platform.valid_url(self._url):
                 return platform(self._url).url()
         
-        raise SoundPlatformException(strings.ERR_EXCEPTION_INVALID_URL)
+        raise SoundPlatformException("URL inválida em todas as plataformas disponíveis")
 
     def title(self) -> str:
         for platform in SoundPlatform.__subclasses__():
@@ -71,4 +70,4 @@ class PlatformHandler:
     @staticmethod
     def show_classes():
         for platform in SoundPlatform.__subclasses__():
-            logger.info(f"{platform.__name__} > SoundPlatform")
+            logger.info(f"SoundPlatform::{platform.__name__}")

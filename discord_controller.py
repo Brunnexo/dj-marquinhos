@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 # Discord.py
 from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction
 
-import strings
 import utils
 
 from sound_platform import PlatformHandler
@@ -113,10 +112,10 @@ class DiscordController:
                     msg += f"{i + 1}. **{queue[i].title()}**"
                     if (i < len(queue) - 1): msg += "\n"
                 
-                await interaction.followup.send(embed=utils.embed_message(description=strings.STR_QUEUE_TITLE, name=strings.STR_QUEUE_LIST, value=msg))
+                await interaction.followup.send(embed=utils.embed_message(description="🎵 Fila de reprodução", name="Lista", value=msg))
                 return
         
-        await interaction.followup.send(strings.STR_EMPTY_QUEUE_REPLY)
+        await interaction.followup.send("A fila está **vazia**!")
     
     def clear_queue(self, guild: Guild):
         if guild.id in self.__playlist:

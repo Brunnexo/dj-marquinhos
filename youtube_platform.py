@@ -1,7 +1,6 @@
 from pytubefix import YouTube, exceptions
 from sound_platform import SoundPlatform, SoundPlatformException
 
-import strings
 import logging
 import re
 import os
@@ -45,9 +44,9 @@ class YouTubePlatform(SoundPlatform):
             
             self._title = str(video.title)
         except exceptions.AgeRestrictedError as e:
-            raise SoundPlatformException(strings.ERR_EXCEPTION_AGE)
+            raise SoundPlatformException("🔞 **Este link é restrito por idade!**")
         
-        if audio is None: raise SoundPlatformException(strings.ERR_EXCEPTION_STREAM)
+        if audio is None: raise SoundPlatformException("Não há stream disponível para a URL inserida")
         
         return audio.url
     
