@@ -1,124 +1,127 @@
-import time
+NAME = "EPD_CONTROLLER"
+
 import sys
 import os
-import psutil
 
-epd_dir = "./waveshare_epd"
-
-if os.path.exists(epd_dir): sys.path.append(epd_dir)
-else: raise ModuleNotFoundError("waveshare_epd")
-
-
-from gui.gui_controller import GUIController
-
-from waveshare_epd import epd2in13_V4
 from PIL import Image, ImageDraw, ImageFont
 
-font = ImageFont.truetype("./font/Font.ttc", 12)
-font_lg = ImageFont.truetype("./font/Font.ttc", 16)
+sys.path.append("./gui/lib/waveshare_epd")
 
-splash = Image.open("./images/splash.bmp")
+from .gui_controller import GUIController, GUIUpdate
 
-class EPD(GUIController):
+if os.getenv("DJ_DISCORD_GUI_CONTROLLER") == NAME:
+    from .lib.waveshare_epd import epd2in13_V4
+    font = ImageFont.truetype("./gui/font/Font.ttc", 12)
+    font_lg = ImageFont.truetype("./gui/font/Font.ttc", 16)
+    splash = Image.open("./gui/images/epd-splash.bmp")
+    logo = Image.open("./gui/images/dj.bmp")
+
+class EPDController(GUIController):
     def __init__(self):
-        self._epd = epd2in13_V4.EPD()
-        self._plotted = False
-        self._display_init = False
+        self.__epd = epd2in13_V4.EPD()
         
-        self.WIDTH = self._epd.width
-        self.HEIGHT = self._epd.height
-        
-        self._user = ""
-        self._command = ""
-        self._channels = 0
-        
-        
+        self.__ticked = False
+        self.__display_init = False
+
+        self.__user = ""
+        self.__command = ""
+        self.__channels = 0
+        self.__cpu_usage_value = 0
+        self.__ram_usage_value = 0
+
+        self.__WIDTH = self.__epd.width
+        self.__HEIGHT = self.__epd.height
+
     def init(self):
-        if not self._display_init:
-            self._epd.init()
+        if not self.__display_init:
+            self.__epd.init()
             self.clear()
-            self._display_init = True
-    
+            self.__display_init = True
+            
+    def tick(self, update: GUIUpdate):
+        self.init()
+        
+        self.__channels = update.channels_count
+        self.__command = update.command
+        self.__cpu_usage_value = update.cpu_usage
+        self.__ram_usage_value = update.ram_usage
+        self.__channels = update.channels_count
+        
+        frame = self.__blank()
+        
+        self.__cpu_usage(frame)
+        self.__ram_usage(frame)
+        self.__dj_logo(frame)
+        self.__show_command(frame)
+        self.__show_channels_count(frame)
+        
+        if self.__ticked:
+            self.__epd.displayPartial(self.__epd.getbuffer(frame))
+        else:
+            self.__epd.display(self.__epd.getbuffer(frame))
+            self.__ticked = True
+
     def clear(self):
-        self._epd.Clear(0xFF)
-        frame = self._blank()
-        self._epd.display(self._epd.getbuffer(frame))
+        self.__epd.Clear(0xFF)
+        frame = self.__blank()
+        self.__epd.display(self.__epd.getbuffer(frame))
+
+    def splash(self):
+        self.__init()
+        self.__epd.display(self.__epd.getbuffer(splash))
+        self.__epd.Clear(0xFF)
+
+    def interval(self) -> int:
+        return 5
         
-    def command(self, user: str, command: str):
-        self._init()
-        self._user = user
-        self._command = command
-        
-    def channels(self, channels: int):
-        self._channels = channels    
+    def name() -> str:
+        return NAME
 
-    def _blank(self):
-        return Image.new('1', (self.HEIGHT, self.WIDTH), 255)
+    def __blank(self):
+        return Image.new('1', (self.__HEIGHT, self.__WIDTH), 255)
 
-    def _dj_logo(self, frame):
-        self._init()
-        logo = Image.open("./images/dj.bmp")
-        frame.paste(logo, (self.HEIGHT - 71, self.WIDTH - 71))
+    def __dj_logo(self, frame):
+        self.__init()
+        frame.paste(logo, (self.__HEIGHT - 71, self.__WIDTH - 71))
 
-    def _cpu_usage(self, frame):
-        self._init()
+    def __cpu_usage(self, frame):
+        self.__init()
         draw = ImageDraw.Draw(frame)
         x, y = 0, 5
         xy = (x, y)
-        usage = psutil.cpu_percent()
-        cpu = int(usage / 100 * self.HEIGHT)
-        draw.rectangle([ xy, (self.HEIGHT, y + 15)], fill=1)
-        draw.text((x, y + 5), f"Uso de CPU: {usage}%", font = font, fill = 0)
+        
+        cpu = int(self.__cpu_usage_value / 100 * self.__HEIGHT)
+        
+        draw.rectangle([ xy, (self.__HEIGHT, y + 15)], fill=1)
+        draw.text((x, y + 5), f"Uso de CPU: {self.__cpu_usage_value}%", font = font, fill = 0)
         draw.rectangle([ xy, (cpu, y + 5)], fill=0)
     
-    def _ram_usage(self, frame):
-        self._init()
+    def __ram_usage(self, frame):
+        self.__init()
         draw = ImageDraw.Draw(frame)
         x, y = 0, 25
         xy = (x, y)
-        usage = psutil.virtual_memory()[2]
-        ram = int(usage / 100 * self.HEIGHT)
-        draw.rectangle([ xy, (self.HEIGHT, y + 15)], fill=1)
-        draw.text((x, y + 5), f"Uso de RAM: {usage}%", font = font, fill = 0)
+        
+        ram = int(self.__ram_usage_value / 100 * self.__HEIGHT)
+        
+        draw.rectangle([ xy, (self.__HEIGHT, y + 15)], fill=1)
+        draw.text((x, y + 5), f"Uso de RAM: {self.__ram_usage_value}%", font = font, fill = 0)
         draw.rectangle([ xy, (ram, y + 5)], fill=0)
 
-    def _show_command(self, frame):
-        self._init()
+    def __show_command(self, frame):
+        self.__init()
         
         draw = ImageDraw.Draw(frame)
         
         x, y = 0, 45
         
-        if len(self._command) > 0 and len(self._user) > 0:
-            draw.text((x, y), f"[{self._user}] usou", font = font, fill = 0)
-            draw.text((x, y + 16), f"/{self._command}", font = font_lg, fill = 0)
+        if len(self.__command) > 0 and len(self.__user) > 0:
+            draw.text((x, y), f"[{self.__user}] usou", font = font, fill = 0)
+            draw.text((x, y + 16), f"/{self.__command}", font = font_lg, fill = 0)
     
-    def _show_channels_count(self, frame):
-        self._init()
+    def __show_channels_count(self, frame):
+        self.__init()
         draw = ImageDraw.Draw(frame)
         x, y = 0, 110
         
-        if self._channels > 0: draw.text((x, y), f"Canais de voz ativos: {self._channels}", font = font, fill = 0)
-    
-    def splash(self):
-        self._init()
-        self._epd.display(self._epd.getbuffer(splash))
-        time.sleep(1)        
-        self._epd.Clear(0xFF)
-    
-    def plot(self):
-        self._init()
-        
-        frame = self._blank()
-        
-        self._cpu_usage(frame)
-        self._ram_usage(frame)
-        self._dj_logo(frame)
-        self._show_command(frame)
-        self._show_channels_count(frame)
-        
-        if self._plotted:
-            self._epd.displayPartial(self._epd.getbuffer(frame))
-        else:
-            self._epd.display(self._epd.getbuffer(frame))
-            self._plotted = True
+        if self.__channels > 0: draw.text((x, y), f"Canais de voz ativos: {self.__channels}", font = font, fill = 0)

@@ -15,11 +15,12 @@ class DiscordController:
     
     def __init__(self):
         self.__connections: Dict[int, VoiceClient] = {}
+        self.__keep_list: List[int] = []
         self.__playlist: Dict[int, List[PlatformHandler]] = {}
     
     async def play(self, guild: Guild, channel: VoiceChannel, url: str) -> Optional[str]:
         if guild.id not in self.__connections: await self.join(guild, channel)
-            
+        
         client = self.__connections[guild.id]
         
         if not client.is_connected():
@@ -28,11 +29,15 @@ class DiscordController:
         
         if not client.is_playing():
             platform = PlatformHandler(url)
-            source = FFmpegPCMAudio(platform.url(), **FFMPEG_OPTIONS)
-            source.read()
-            client.play(source, after = lambda e: self.play_next(guild, e))
-            return platform.title()
+            return self.__platform_play(platform, client, guild)
+
         else: self.queue(guild, url)
+    
+    def __platform_play(self, platform: PlatformHandler, client: VoiceClient, guild: Guild) -> str:
+        source = FFmpegPCMAudio(platform.url(), **FFMPEG_OPTIONS)
+        source.read()
+        client.play(source, after = lambda e: self.play_next(guild, e))
+        return platform.title()
     
     def play_pause(self, guild: Guild) -> bool:
         if guild.id not in self.__connections: return False
@@ -95,9 +100,7 @@ class DiscordController:
         
         if len(queue) > 0:
             platform = queue.pop(0)
-            source = FFmpegPCMAudio(platform.url(), **FFMPEG_OPTIONS)
-            time.sleep(1.5)
-            client.play(source, after = lambda e: self.play_next(guild, e))
+            self.__platform_play(platform, client, guild)
             return [platform.raw_url(), platform.title()]
     
     async def show_queue(self, interaction: Interaction):
@@ -117,6 +120,34 @@ class DiscordController:
         
         await interaction.followup.send("A fila está **vazia**!")
     
+    def keep(self, guild: Guild):
+        self.__keep_list.append(guild.id)
+    
+    async def clean(self):
+        timestamp = round(time.time())
+        
+        deletions = []
+
+        for id in self.__connections:
+            if id in self.__keep_list: continue
+            
+            client = self.__connections[id]
+            
+            if not client.is_connected():
+                await self.__disconnect_client(client, id, deletions=deletions)
+                continue
+            
+            if not client.is_playing() and not client.is_paused():
+                delta = round((timestamp - client.timestamp) / 1000)
+                if delta > 60: await self.__disconnect_client(client, id, deletions=deletions)
+
+        for id in deletions: del self.__connections[id]
+    
+    async def __disconnect_client(self, client: VoiceClient, id: int, *, deletions: List[int] = None):
+        await client.disconnect()
+        client.cleanup()
+        if deletions is not None: deletions.append(id)
+    
     def clear_queue(self, guild: Guild):
         if guild.id in self.__playlist:
             queue = self.__playlist[guild.id]
@@ -135,10 +166,11 @@ class DiscordController:
     
     async def join(self, guild: Guild, channel: VoiceChannel):
         voice_client: VoiceClient = await channel.connect()
+        voice_client.timestamp = round(time.time())
         
         if voice_client: self.__connections[guild.id] = voice_client
         
     async def leave(self, guild: Guild):
         if guild.id in self.__connections:
-            client = self.__connections.pop(guild.id)
-            await client.disconnect()
+            client = self.__connections[guild.id]
+            await self.__disconnect_client(client, guild.id)

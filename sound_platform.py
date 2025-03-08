@@ -13,58 +13,50 @@ class SoundPlatform(ABC):
         self._url = url
 
     @abstractmethod
-    def url(self) -> str:
-        pass
+    def url(self) -> str: pass
     
     @abstractmethod
-    def title(self) -> str:
-        pass
+    def title(self) -> str: pass
     
     @abstractmethod
-    def raw_url(self) -> str:
-        pass
+    def raw_url(self) -> str: pass
     
     @abstractmethod
-    def platform(self) -> str:
-        pass
+    def platform(self) -> str: pass
     
     @staticmethod
-    def valid_url(url: str) -> bool:
-        pass
+    def valid_url(url: str) -> bool: pass
     
 
 class PlatformHandler:
     def __init__(self, url: str):
-        self._url = url
-    
-    def url(self) -> str:
+        self.__url = url
+        self.__platform = None
+
         for platform in SoundPlatform.__subclasses__():
-            if platform.valid_url(self._url):
-                return platform(self._url).url()
-        
-        raise SoundPlatformException("URL inválida em todas as plataformas disponíveis")
+            if platform.valid_url(self.__url):
+                self.__platform = platform
+
+        if self.__platform is None: raise SoundPlatformException("URL inválida em todas as plataformas disponíveis")
+
+    def url(self) -> str:
+        return self.__platform(self.__url).url()
 
     def title(self) -> str:
-        for platform in SoundPlatform.__subclasses__():
-            if platform.valid_url(self._url):
-                def_platform = platform(self._url)
-                return f"{def_platform.title()} - {def_platform.platform()}"
+        def_platform = self.__platform(self.__url)
+        return f"{def_platform.title()} - {def_platform.platform()}"
+
+    def raw_url(self) -> str:
+        return self.__platform(self.__url).raw_url()
 
     def platform(self) -> str:
-        for platform in SoundPlatform.__subclasses__():
-            if platform.valid_url(self._url):
-                return platform(self._url).platform()
-    
-    def raw_url(self) -> str:
-        for platform in SoundPlatform.__subclasses__():
-            if platform.valid_url(self._url):
-                return platform(self._url).raw_url()
-    
+        return self.__platform(self.__url).platform()
+
     @staticmethod
     def valid_url(url: str) -> bool:
         for platform in SoundPlatform.__subclasses__():
             if platform.valid_url(url): return True
-            
+
         return False
     
     @staticmethod

@@ -21,7 +21,12 @@ from mp3_platform import MP3Platform
 from youtube_platform import YouTubePlatform
 
 from sound_platform import PlatformHandler, SoundPlatformException
-PlatformHandler.show_classes()
+
+from gui.epd_controller import EPDController
+from gui.tkinter_controller import TKInterController
+
+from gui.gui_controller import GUIHandler
+gui_handler = GUIHandler()
 
 # Token
 def token() -> str:
@@ -35,7 +40,7 @@ def token() -> str:
 
 TOKEN = token()
 
-if not TOKEN: raise ValueError('Token do BOT não definido! Defina o token na variável de ambiente "{KEY}" para prosseguir com a execução.'.format(KEY=KEY))
+if not TOKEN: raise ValueError(f'Token do BOT não definido! Defina o token na variável de ambiente "{KEY}" para prosseguir com a execução.')
 
 # Discord intents
 intents = discord.Intents.default()
@@ -86,7 +91,6 @@ async def play_command(interaction: discord.Interaction, url: str):
             return
         
         await interaction_play(interaction, url)
-
         
 @tree.command(name='queue', description="Exibir fila de reprodução")
 async def queue_command(interaction: discord.Interaction):
@@ -116,6 +120,12 @@ async def stop_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
         controller.stop(interaction.guild)
         await interaction.followup.send("⏹️ Para tudo!")
+        
+@tree.command(name='keep', description="Manter-se no canal")
+async def keep_command(interaction: discord.Interaction):
+    if await utils.validate_interaction(interaction):
+        controller.keep(interaction.guild)
+        await interaction.followup.send("😎 Vou ficar, com certeza!")
 
 @tree.command(name='join', description="Vou me juntar a você!")
 async def join_command(interaction: discord.Interaction):
@@ -154,8 +164,8 @@ async def help_command(interaction: discord.Interaction):
 
 @client.event
 async def on_app_command_completion(interaction: discord.Interaction, command: discord.app_commands.Command):
-    print(interaction.user.name)
-    print(command.name)
+    gui_handler.set_command(command.name)
+    gui_handler.set_user(interaction.user.name)
 
 async def message_play(message: discord.Message, url: str):
     try:
@@ -197,9 +207,11 @@ async def on_message(message: discord.Message):
                     else:
                         await message_play(message, mp3_link)
 
-@tasks.loop(seconds = 5)
+@tasks.loop(seconds = gui_handler.interval())
 async def background_task():
-    pass
+    await controller.clean()
+    gui_handler.set_channels_count(controller.connections_count())
+    gui_handler.tick()
 
 @client.event
 async def on_connect():
@@ -208,11 +220,16 @@ async def on_connect():
 @client.event
 async def on_ready():
     await tree.sync()
-    logger.info("Entrei como {user}".format(user=client.user.name))
+    logger.info(f"Entrei como {client.user.name}")
 
 def signal_handler(sig, frame):
     client.close()
+    gui_handler.clear()
     raise SystemExit("Encerrando BOT...")
 
-signal.signal(signal.SIGTERM, signal_handler)
-client.run(TOKEN)
+
+if __name__ == "__main__":
+    PlatformHandler.show_classes()
+    gui_handler.init()
+    signal.signal(signal.SIGTERM, signal_handler)
+    client.run(TOKEN)
