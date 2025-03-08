@@ -66,7 +66,7 @@ class TKInterController(GUIController):
         ram = update.ram_usage
         count = update.channels_count
         
-        self.__label_count.config(text=f"O DJ está presente em {count} cana{"is" if count > 1 else "l"}", font=(None, 14, "bold"))
+        self.__label_count.config(text=f"O DJ está presente em {count} cana{'is' if count > 1 else 'l'}", font=(None, 14, "bold"))
         
         self.__label_cpu.config(text=f"Uso de CPU: {cpu}%")
         self.__cpu_usage_value.set(cpu)
