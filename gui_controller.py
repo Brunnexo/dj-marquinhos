@@ -1,5 +1,6 @@
 import os
 import logging
+import utils
 
 from typing import Optional
 import psutil
@@ -10,8 +11,7 @@ from abc import ABC, abstractmethod
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
 
-CONTROLLER = os.getenv("DJ_DISCORD_GUI_CONTROLLER")
-
+ctrl = utils.gui_arg() or os.getenv("DJ_DISCORD_GUI_CONTROLLER")
 class GUIUpdate:
     cpu_usage: float
     ram_usage: float
@@ -49,7 +49,7 @@ class GUIHandler:
         for controller in GUIController.__subclasses__():
             name = controller.name()
             logger.debug(name)
-            if CONTROLLER == name:
+            if ctrl == name.lower():
                 self.__controller = controller()
                 logger.info(f"Controlador GUI definido: {self.__controller.name()}")
             

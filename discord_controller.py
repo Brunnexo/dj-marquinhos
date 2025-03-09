@@ -141,11 +141,12 @@ class DiscordController:
                 delta = round((timestamp - client.timestamp) / 1000)
                 if delta > 60: await self.__disconnect_client(client, id, deletions=deletions)
 
-        for id in deletions: del self.__connections[id]
+        for id in deletions:
+            self.__connections[id].cleanup()
+            del self.__connections[id]
     
     async def __disconnect_client(self, client: VoiceClient, id: int, *, deletions: List[int] = None):
         await client.disconnect()
-        client.cleanup()
         if deletions is not None: deletions.append(id)
     
     def clear_queue(self, guild: Guild):
@@ -171,6 +172,11 @@ class DiscordController:
         if voice_client: self.__connections[guild.id] = voice_client
         
     async def leave(self, guild: Guild):
+        deletions = []
         if guild.id in self.__connections:
             client = self.__connections[guild.id]
-            await self.__disconnect_client(client, guild.id)
+            await self.__disconnect_client(client, guild.id, deletions=deletions)
+            
+        for id in deletions:
+            self.__connections[id].cleanup()
+            del self.__connections[id]

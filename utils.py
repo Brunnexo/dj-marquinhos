@@ -1,5 +1,7 @@
-
+import sys
 import discord
+
+args = sys.argv
 
 async def validate_interaction(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -17,6 +19,18 @@ async def validate_message(message: discord.Message):
     else:
         await message.reply("🚫 Você não está conectado a nenhum canal de voz!")
         return False
+
+def gui_arg():
+    if "--gui" in args:
+        index = args.index("--gui")
+        if (len(args) > index): return args[index + 1].lower()
+
+def token_arg():
+    if "--token" in args:
+        index = args.index("--token")
+        if (len(args) > index): return args[index + 1]
+        
+    return None
 
 def embed_message(*, description: str = None,  name: str  = None, value: str  = None) -> discord.Embed:
     embed = discord.Embed(description=description, color=0xe69138)

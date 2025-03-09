@@ -4,9 +4,6 @@ KEY = 'DJ_DISCORD_TOKEN'
 import os
 import logging
 import signal
-import sys
-
-args = sys.argv
 
 # Imports Discord
 import discord
@@ -26,25 +23,13 @@ from sound_platform import PlatformHandler, SoundPlatformException
 
 from epd_controller import EPDController
 
-if "--gui" in args:
-    index = args.index("--gui")
-    if (len(args) > index) and "tkinter" in args[index + 1].lower():
-        from tkinter_controller import TKInterController        
+if "tkinter" in utils.gui_arg(): from tkinter_controller import TKInterController
 
 from gui_controller import GUIHandler
 
 gui_handler = GUIHandler()
 
-# Token
-def token() -> str:
-    if "--token" in args:
-        index = args.index("--token")
-        if (len(args) > index):
-            return args[index + 1]
-    else:
-        return os.getenv(KEY)
-
-TOKEN = token()
+TOKEN = utils.token_arg() or os.getenv(KEY)
 
 if not TOKEN: raise ValueError(f'Token do BOT não definido! Defina o token na variável de ambiente "{KEY}" para prosseguir com a execução.')
 
@@ -170,8 +155,14 @@ async def help_command(interaction: discord.Interaction):
 
 @client.event
 async def on_app_command_completion(interaction: discord.Interaction, command: discord.app_commands.Command):
-    gui_handler.set_command(command.name)
-    gui_handler.set_user(interaction.user.name)
+    username = interaction.user.name
+    user_id = interaction.user.id
+    command_name = command.name
+    
+    logger.info(f"[{user_id}] {username} usou /{command_name}")
+    
+    gui_handler.set_command(command_name)
+    gui_handler.set_user(username)
 
 async def message_play(message: discord.Message, url: str):
     try:
@@ -188,30 +179,23 @@ async def message_play(message: discord.Message, url: str):
 
 @client.event
 async def on_message(message: discord.Message):
-    if message.author == client.user:
-        return
+    if message.author == client.user: return
     
     if await utils.validate_message(message):
         if client.user.mentioned_in(message):
             msg = message.content
-            
             if "play" in msg:
                 if len(message.attachments) > 0:
                     attachment = message.attachments[0]
                     url = attachment.url
-                    
                     if not PlatformHandler.valid_url(url):
                         await message.reply("❌ URL inválida!")
                         return
-                    
                     await message_play(message, url)
                 else:
                     mp3_link = MP3Platform.extract_mp3_url(msg)
-                    
-                    if not mp3_link:
-                        await message.reply("🐻 Opa, bão!?")
-                    else:
-                        await message_play(message, mp3_link)
+                    if not mp3_link: await message.reply("🐻 Opa, bão!?")
+                    else: await message_play(message, mp3_link)
 
 @tasks.loop(seconds = gui_handler.interval())
 async def background_task():

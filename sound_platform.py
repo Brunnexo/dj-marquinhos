@@ -38,6 +38,7 @@ class PlatformHandler:
                 self.__platform = platform
 
         if self.__platform is None: raise SoundPlatformException("URL inválida em todas as plataformas disponíveis")
+        else: logger.debug(f"{self.__platform.__name__}: {self.__url}")
 
     def url(self) -> str:
         return self.__platform(self.__url).url()
@@ -61,5 +62,6 @@ class PlatformHandler:
     
     @staticmethod
     def show_classes():
+        logger.debug("Plataformas de som disponíveis: ")
         for platform in SoundPlatform.__subclasses__():
-            logger.info(f"SoundPlatform::{platform.__name__}")
+            logger.info(f"{platform.__name__}")

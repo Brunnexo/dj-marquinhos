@@ -62,6 +62,8 @@ class EPDController(GUIController):
             self.__ticked = True
 
     def clear(self):
+        self.__epd.Clear(0xFF)
+        time.sleep(1)
         frame = self.__blank()
         self.__epd.display(self.__epd.getbuffer(frame))
 
