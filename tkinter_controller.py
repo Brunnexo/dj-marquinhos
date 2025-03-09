@@ -11,8 +11,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from gui_controller import GUIController, GUIUpdate
 
-dj_image = Image.open("./gui/images/dj-large.png").resize((100, 100))
-balloon = Image.open("./gui/images/balloon.png").resize((297, 84))
+dj_image = Image.open("./images/dj-large.png").resize((100, 100))
+balloon = Image.open("./images/balloon.png").resize((297, 84))
 
 
 class TKInterController(GUIController):

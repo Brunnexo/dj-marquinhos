@@ -2,6 +2,7 @@ KEY = 'DJ_DISCORD_TOKEN'
 
 # Python
 import os
+import platform
 import logging
 import signal
 import sys
@@ -21,8 +22,6 @@ from mp3_platform import MP3Platform
 from youtube_platform import YouTubePlatform
 
 from sound_platform import PlatformHandler, SoundPlatformException
-
-sys.path.append("./gui")
 
 from epd_controller import EPDController
 from tkinter_controller import TKInterController

@@ -37,7 +37,6 @@ class GUIController(ABC):
     
     def name() -> Optional[str]: pass
         
-
 class GUIHandler:
     def __init__(self):
         self.__last_command = ""
@@ -56,9 +55,6 @@ class GUIHandler:
             
         if self.__controller is None:
             logger.warning("Nenhum controlador GUI definido")
-    
-    def subclasses():
-        return GUIController.__subclasses__()
     
     def set_command(self, command: str):
         if self.__controller is None: return
