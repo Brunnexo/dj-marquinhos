@@ -5,12 +5,13 @@ import os
 
 from PIL import Image, ImageDraw, ImageFont
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append("./gui/lib/waveshare_epd")
 
-from .gui_controller import GUIController, GUIUpdate
+from gui_controller import GUIController, GUIUpdate
 
 if os.getenv("DJ_DISCORD_GUI_CONTROLLER") == NAME:
-    from .lib.waveshare_epd import epd2in13_V4
+    from lib.waveshare_epd import epd2in13_V4
     font = ImageFont.truetype("./gui/font/Font.ttc", 12)
     font_lg = ImageFont.truetype("./gui/font/Font.ttc", 16)
     splash = Image.open("./gui/images/epd-splash.bmp")

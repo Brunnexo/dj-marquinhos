@@ -1,11 +1,15 @@
 NAME = "TKINTER"
 
+import os
+import sys
 import tkinter as tk
 from tkinter import ttk
 
 from PIL import Image, ImageTk
 
-from .gui_controller import GUIController, GUIUpdate
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from gui_controller import GUIController, GUIUpdate
 
 dj_image = Image.open("./gui/images/dj-large.png").resize((100, 100))
 balloon = Image.open("./gui/images/balloon.png").resize((297, 84))
@@ -82,7 +86,6 @@ class TKInterController(GUIController):
             self.__balloon.lower()
             self.__label_command.place(x=(self.__WIDTH - 320), y=(self.__HEIGHT - 188), width=260, height=28)
             self.__label_command.config(text=f"{self.__user} usou /{self.__command}", font=(None, 12, "bold"), justify="left")
-            
         
         self.__win.update()
     
@@ -91,8 +94,7 @@ class TKInterController(GUIController):
 
     def splash(self): pass
     
-    def interval(self):
-        return 0
+    def interval(self): return 0
     
     @staticmethod
     def name() -> str:

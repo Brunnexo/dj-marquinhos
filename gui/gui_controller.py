@@ -1,8 +1,14 @@
 import os
+import logging
+
 from typing import Optional
 import psutil
 
 from abc import ABC, abstractmethod
+
+# Logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
 
 CONTROLLER = os.getenv("DJ_DISCORD_GUI_CONTROLLER")
 
@@ -40,9 +46,20 @@ class GUIHandler:
         
         self.__controller = None
         
+        logger.debug("Controladores GUI dispon\u00EDveis:")
         for controller in GUIController.__subclasses__():
-            if CONTROLLER == controller.name(): self.__controller = controller()
-        
+            name = controller.name()
+            logger.debug(name)
+            if CONTROLLER == name:
+                self.__controller = controller()
+                logger.info(f"Controlador GUI definido: {self.__controller.name()}")
+            
+        if self.__controller is None:
+            logger.warning("Nenhum controlador GUI definido")
+    
+    def subclasses():
+        return GUIController.__subclasses__()
+    
     def set_command(self, command: str):
         if self.__controller is None: return
         self.__last_command = command

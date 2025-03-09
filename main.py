@@ -22,10 +22,13 @@ from youtube_platform import YouTubePlatform
 
 from sound_platform import PlatformHandler, SoundPlatformException
 
-from gui.epd_controller import EPDController
-from gui.tkinter_controller import TKInterController
+sys.path.append("./gui")
 
-from gui.gui_controller import GUIHandler
+from epd_controller import EPDController
+from tkinter_controller import TKInterController
+
+from gui_controller import GUIHandler
+
 gui_handler = GUIHandler()
 
 # Token
@@ -230,6 +233,9 @@ def signal_handler(sig, frame):
 
 if __name__ == "__main__":
     PlatformHandler.show_classes()
+    
     gui_handler.init()
+    gui_handler.splash()
+    
     signal.signal(signal.SIGTERM, signal_handler)
     client.run(TOKEN)
