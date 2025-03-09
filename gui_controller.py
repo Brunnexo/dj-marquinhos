@@ -9,9 +9,10 @@ from abc import ABC, abstractmethod
 
 # Logger
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
 ctrl = utils.gui_arg() or os.getenv("DJ_DISCORD_GUI_CONTROLLER")
+
 class GUIUpdate:
     cpu_usage: float
     ram_usage: float
@@ -45,11 +46,11 @@ class GUIHandler:
         
         self.__controller = None
         
-        logger.debug("Controladores GUI disponíveis:")
+        logger.info("Controladores GUI disponíveis:")
         for controller in GUIController.__subclasses__():
             name = controller.name()
-            logger.debug(name)
-            if ctrl == name.lower():
+            logger.info(name)
+            if str(ctrl).lower() == name.lower():
                 self.__controller = controller()
                 logger.info(f"Controlador GUI definido: {self.__controller.name()}")
             

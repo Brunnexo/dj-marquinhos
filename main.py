@@ -21,10 +21,9 @@ from youtube_platform import YouTubePlatform
 
 from sound_platform import PlatformHandler, SoundPlatformException
 
+if "tkinter" in str(utils.gui_arg()): from tkinter_controller import TKInterController
+
 from epd_controller import EPDController
-
-if "tkinter" in utils.gui_arg(): from tkinter_controller import TKInterController
-
 from gui_controller import GUIHandler
 
 gui_handler = GUIHandler()
@@ -46,11 +45,11 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 controller = DiscordController()
 
-buttons = None
+buttons = None  
 
 # Logger
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
 def get_buttons():
     global buttons
@@ -62,16 +61,19 @@ def get_buttons():
 
 async def interaction_play(interaction: discord.Interaction, url: str):
     try:
-        title = await controller.play(interaction.guild, interaction.user.voice.channel, url)
+        title = await controller.play(interaction, url)
         
         if title: embed = utils.embed_message(description="💿 Tocando agora!", name=title, value=url)
         else: embed = utils.embed_message(description="💿 Colocando em fila...", name=PlatformHandler(url).title(), value=url)
         
         await interaction.followup.send(embed=embed, view=get_buttons())
     except SoundPlatformException as e:
+        logger.error(e)
         await interaction.followup.send(str(e))
     except Exception as e:
+        logger.error(e)
         await interaction.followup.send("Erro inesperado: {err}".format(err=str(e).lower()))
+        
 
 @tree.command(name='play', description="Tocar música a partir de um link")
 @app_commands.describe(url="URL do YouTube ou outra plataforma para tocar")
@@ -121,13 +123,13 @@ async def keep_command(interaction: discord.Interaction):
 @tree.command(name='join', description="Vou me juntar a você!")
 async def join_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        await controller.join(interaction.guild, interaction.user.voice.channel)
+        await controller.join(interaction)
         await interaction.followup.send("🐻 Opa, bão!?")
 
 @tree.command(name='leave', description="Sairei do canal de voz")
 async def leave_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        await controller.leave(interaction.guild)
+        await controller.leave(interaction)
         await interaction.followup.send("🫡 Estarei à disposição!")
 
 @tree.command(name='skip', description="Pular para a próxima música")
@@ -173,8 +175,10 @@ async def message_play(message: discord.Message, url: str):
         
         await message.reply(embed=embed, view=get_buttons())
     except SoundPlatformException as e:
+        logger.error(e)
         await message.reply(str(e))
     except Exception as e:
+        logger.error(e)
         await message.reply("Erro inesperado: {err}".format(err=str(e).lower()))
 
 @client.event
@@ -217,7 +221,6 @@ def signal_handler(sig, frame):
     gui_handler.clear()
     raise SystemExit("Encerrando BOT...")
 
-
 if __name__ == "__main__":
     PlatformHandler.show_classes()
     
@@ -225,4 +228,5 @@ if __name__ == "__main__":
     gui_handler.splash()
     
     signal.signal(signal.SIGTERM, signal_handler)
+    
     client.run(TOKEN)

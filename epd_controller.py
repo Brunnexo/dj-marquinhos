@@ -1,6 +1,6 @@
 import time
-import platform
 import sys
+import utils
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -9,7 +9,7 @@ sys.path.append("./waveshare_epd")
 from gui_controller import GUIController, GUIUpdate
 
 # Este módulo só funciona no Raspberry Pi
-if platform.system() == "Linux": from waveshare_epd import epd2in13_V4
+if utils.is_raspberrypi(): from waveshare_epd import epd2in13_V4
 
 font = ImageFont.truetype("./font/Font.ttc", 12)
 font_lg = ImageFont.truetype("./font/Font.ttc", 16)

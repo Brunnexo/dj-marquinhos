@@ -1,31 +1,134 @@
 # Python
 import time
-from typing import Dict, List, Optional
+import logging
+from typing import Dict, List, Optional, Union
+
+
 
 # Discord.py
-from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction
+from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction, TextChannel
+
+InteractionChannel = Union[VoiceChannel, TextChannel]
 
 import utils
 
-from sound_platform import PlatformHandler
+from sound_platform import PlatformHandler, SoundPlatformException
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn -filter:a "volume=0.25"'}
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
+
+
+class DiscordConnection:
+    def __init__(self, client: VoiceClient, channel: VoiceChannel, interaction_channel: InteractionChannel):
+        self.__keep = False
+        self.__client: VoiceClient = client
+        self.__channel: VoiceChannel = channel
+        self.__interaction_channel: InteractionChannel = interaction_channel
+        self.__timestamp: float = time.time()
+    
+    def __get_keep(self) -> bool:
+        return self.__keep
+    
+    def __set_keep(self, keep: bool):
+        self.__keep = keep
+        
+    def __del_keep(self):
+        del self.__keep
+    
+    def __get_client(self) -> VoiceClient:
+        client = self.__client
+        if client.is_playing(): self.__timestamp = time.time()
+        return client
+    
+    def __set_client(self, client: VoiceClient):
+        self.__client = client
+    
+    def __del_client(self):
+        del self.__client
+    
+    def __get_channel(self) -> VoiceChannel:
+        return self.__channel
+    
+    def __set_channel(self, channel: VoiceChannel):
+        self.__channel = channel
+        
+    def __del_channel(self):
+        del self.__channel
+        
+    def __get_timestamp(self) -> float:
+        return self.__timestamp
+    
+    def __set_timestamp(self, timestamp: float):
+        self.__timestamp = timestamp
+
+    def __del_timestamp(self):
+        del self.__timestamp
+
+    def __get_interaction_channel(self) -> InteractionChannel:
+        return self.__interaction_channel
+    
+    def __set_interaction_channel(self, interaction_channel: InteractionChannel):
+        self.__interaction_channel = interaction_channel
+
+    def __del_interaction_channel(self):
+        del self.__interaction_channel
+
+    keep = property(
+        fget = __get_keep,
+        fset = __set_keep,
+        fdel = __del_keep
+    )
+    
+    client = property(
+        fget = __get_client,
+        fset = __set_client,
+        fdel = __del_client
+    )
+    
+    channel = property(
+        fget = __get_channel,
+        fset = __set_channel,
+        fdel = __del_channel
+    )
+    
+    interaction_channel = property(
+        fget = __get_interaction_channel,
+        fset = __set_interaction_channel,
+        fdel = __del_interaction_channel
+    )
+    
+    timestamp = property(
+        fget = __get_timestamp,
+        fset = __set_timestamp,
+        fdel = __del_timestamp
+    )
 
 class DiscordController:
     
     def __init__(self):
-        self.__connections: Dict[int, VoiceClient] = {}
-        self.__keep_list: List[int] = []
+        self.__connections: Dict[int, DiscordConnection] = {}
         self.__playlist: Dict[int, List[PlatformHandler]] = {}
     
-    async def play(self, guild: Guild, channel: VoiceChannel, url: str) -> Optional[str]:
-        if guild.id not in self.__connections: await self.join(guild, channel)
+    async def play(self, interaction: Interaction, url: str) -> Optional[str]:
+        guild = interaction.guild
+        channel = interaction.user.voice.channel
         
-        client = self.__connections[guild.id]
+        if guild.id not in self.__connections: await self.join(interaction)
         
-        if not client.is_connected():
-            await self.join(guild, channel)
-            client = self.__connections[guild.id]
+        user = interaction.user
+        
+        connection = self.__connections[guild.id]
+        
+        members = connection.channel.members
+        user_connected = len([member for member in members if member.id == user.id]) > 1
+        
+        if not user_connected: 
+            await connection.client.move_to(channel)
+            self.__connections[guild.id].channel = channel
+        
+        client = connection.client
         
         if not client.is_playing():
             platform = PlatformHandler(url)
@@ -42,7 +145,9 @@ class DiscordController:
     def play_pause(self, guild: Guild) -> bool:
         if guild.id not in self.__connections: return False
         
-        client = self.__connections[guild.id]
+        connection = self.__connections[guild.id]
+        
+        client = connection.client
         
         if client.is_playing():
             client.pause()
@@ -54,30 +159,22 @@ class DiscordController:
     
     def pause(self, guild: Guild):
         if guild.id not in self.__connections: return
-        
-        client = self.__connections[guild.id]
-        
+        client = self.__connections[guild.id].client
         if client: client.pause()
         
     def resume(self, guild: Guild):
         if guild.id not in self.__connections: return
-        
-        client = self.__connections[guild.id]
-        
+        client = self.__connections[guild.id].client
         if client: client.resume()
     
     def stop(self, guild: Guild):
         if guild.id not in self.__connections: return
-        
-        client = self.__connections[guild.id]
-        
+        client = self.__connections[guild.id].client
         if client: client.stop()
 
     def skip(self, guild: Guild) -> Optional[List[str]]:
         if guild.id not in self.__connections: return
-        
-        client = self.__connections[guild.id]
-        
+        client = self.__connections[guild.id].client
         if client: client.stop()
         
         return self.play_next(guild, None)
@@ -86,7 +183,7 @@ class DiscordController:
         return guild.id in self.__connections or guild.id in self.__playlist
     
     def play_next(self, guild: Guild, e: Exception) -> Optional[List[str]]:
-        if e: raise e
+        if e: raise SoundPlatformException(str(e))
         
         if guild.id not in self.__playlist: return
         
@@ -94,7 +191,7 @@ class DiscordController:
         
         if not queue: queue = []
         
-        client = self.__connections[guild.id]
+        client = self.__connections[guild.id].client
         
         if not client or not client.is_connected(): queue.clear()
         
@@ -117,36 +214,51 @@ class DiscordController:
                 
                 await interaction.followup.send(embed=utils.embed_message(description="🎵 Fila de reprodução", name="Lista", value=msg))
                 return
-        
+
         await interaction.followup.send("A fila está **vazia**!")
     
     def keep(self, guild: Guild):
-        self.__keep_list.append(guild.id)
-    
+        if guild.id not in self.__connections: return
+        self.__connections[guild.id].keep = True
+
     async def clean(self):
+        
         timestamp = round(time.time())
         
         deletions = []
 
         for id in self.__connections:
-            if id in self.__keep_list: continue
+            connection = self.__connections[id]
             
-            client = self.__connections[id]
+            if connection.keep: continue
+            
+            channel = connection.channel
+            client = connection.client
             
             if not client.is_connected():
-                await self.__disconnect_client(client, id, deletions=deletions)
+                await self.__disconnect_client(id, deletions=deletions, rs=None)
                 continue
             
+            if len(channel.members) == 1:
+                await self.__disconnect_client(id, deletions=deletions, rs="falta de ouvintes")
+            
             if not client.is_playing() and not client.is_paused():
-                delta = round((timestamp - client.timestamp) / 1000)
-                if delta > 60: await self.__disconnect_client(client, id, deletions=deletions)
+                delta = round(timestamp - connection.timestamp)
+                if delta > 60: await self.__disconnect_client(id, deletions=deletions)
 
         for id in deletions:
-            self.__connections[id].cleanup()
+            self.__connections[id].client.cleanup()
             del self.__connections[id]
     
-    async def __disconnect_client(self, client: VoiceClient, id: int, *, deletions: List[int] = None):
-        await client.disconnect()
+    async def __disconnect_client(self, id: int, *, deletions: List[int] = None, rs: Optional[str] = "inatividade"):
+        connection = self.__connections[id]
+        
+        interaction_channel = connection.interaction_channel
+        
+        if rs is not None:
+            await interaction_channel.send(f"🚬 Estou saindo por **{rs}**...")
+            
+        await connection.client.disconnect()
         if deletions is not None: deletions.append(id)
     
     def clear_queue(self, guild: Guild):
@@ -160,23 +272,25 @@ class DiscordController:
         if guild.id in self.__playlist: queue = self.__playlist[guild.id]
         
         queue.append(PlatformHandler(url))
+        
         self.__playlist[guild.id] = queue
     
-    def connections_count(self):
-        return len(self.__connections)
+    def connections_count(self): return len(self.__connections)
     
-    async def join(self, guild: Guild, channel: VoiceChannel):
-        voice_client: VoiceClient = await channel.connect()
-        voice_client.timestamp = round(time.time())
+    async def join(self, interaction: Interaction):
+        guild = interaction.guild
+        channel = interaction.user.voice.channel
+        interaction_channel = interaction.channel
         
-        if voice_client: self.__connections[guild.id] = voice_client
-        
-    async def leave(self, guild: Guild):
+        client: VoiceClient = await channel.connect()
+        if client: self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
+
+    async def leave(self, interaction: Interaction):
         deletions = []
+        
+        guild = interaction.guild
+        
         if guild.id in self.__connections:
-            client = self.__connections[guild.id]
-            await self.__disconnect_client(client, guild.id, deletions=deletions)
-            
-        for id in deletions:
-            self.__connections[id].cleanup()
-            del self.__connections[id]
+            await self.__disconnect_client(guild.id, deletions=deletions, rs=None)
+            del self.__connections[id]    
+        
