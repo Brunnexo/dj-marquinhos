@@ -1,20 +1,14 @@
-NAME = "EPD_CONTROLLER"
-
 import platform
 import sys
-import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-system = platform.system()
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append("./lib/waveshare_epd")
+sys.path.append("./waveshare_epd")
 
 from gui_controller import GUIController, GUIUpdate
 
 # Este módulo só funciona no Raspberry Pi
-if system == "Linux": from lib.waveshare_epd import epd2in13_V4
+if platform.system() == "Linux": from waveshare_epd import epd2in13_V4
 
 font = ImageFont.truetype("./font/Font.ttc", 12)
 font_lg = ImageFont.truetype("./font/Font.ttc", 16)
@@ -79,8 +73,9 @@ class EPDController(GUIController):
     def interval(self) -> int:
         return 5
         
+    @staticmethod
     def name() -> str:
-        return NAME
+        return "EPD_CONTROLLER"
 
     def __blank(self):
         return Image.new('1', (self.__HEIGHT, self.__WIDTH), 255)

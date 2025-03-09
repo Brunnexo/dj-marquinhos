@@ -1,19 +1,12 @@
-NAME = "TKINTER"
-
-import os
-import sys
 import tkinter as tk
 from tkinter import ttk
 
 from PIL import Image, ImageTk
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from gui_controller import GUIController, GUIUpdate
 
 dj_image = Image.open("./images/dj-large.png").resize((100, 100))
 balloon = Image.open("./images/balloon.png").resize((297, 84))
-
 
 class TKInterController(GUIController):
     def __init__(self):
@@ -98,4 +91,4 @@ class TKInterController(GUIController):
     
     @staticmethod
     def name() -> str:
-        return NAME
+        return "TKINTER"
