@@ -2,10 +2,11 @@ KEY = 'DJ_DISCORD_TOKEN'
 
 # Python
 import os
-import platform
 import logging
 import signal
 import sys
+
+args = sys.argv
 
 # Imports Discord
 import discord
@@ -24,7 +25,11 @@ from youtube_platform import YouTubePlatform
 from sound_platform import PlatformHandler, SoundPlatformException
 
 from epd_controller import EPDController
-from tkinter_controller import TKInterController
+
+if "--gui" in args:
+    index = args.index("--gui")
+    if (len(args) > index) and "tkinter" in args[index + 1].lower():
+        from tkinter_controller import TKInterController        
 
 from gui_controller import GUIHandler
 
@@ -32,7 +37,6 @@ gui_handler = GUIHandler()
 
 # Token
 def token() -> str:
-    args = sys.argv
     if "--token" in args:
         index = args.index("--token")
         if (len(args) > index):

@@ -45,7 +45,7 @@ class GUIHandler:
         
         self.__controller = None
         
-        logger.debug("Controladores GUI dispon\u00EDveis:")
+        logger.debug("Controladores GUI disponíveis:")
         for controller in GUIController.__subclasses__():
             name = controller.name()
             logger.debug(name)

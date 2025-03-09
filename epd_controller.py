@@ -1,3 +1,4 @@
+import time
 import platform
 import sys
 
@@ -61,13 +62,13 @@ class EPDController(GUIController):
             self.__ticked = True
 
     def clear(self):
-        self.__epd.Clear(0xFF)
         frame = self.__blank()
         self.__epd.display(self.__epd.getbuffer(frame))
 
     def splash(self):
-        self.__init()
+        self.init()
         self.__epd.display(self.__epd.getbuffer(splash))
+        time.sleep(1)
         self.__epd.Clear(0xFF)
 
     def interval(self) -> int:
@@ -81,11 +82,11 @@ class EPDController(GUIController):
         return Image.new('1', (self.__HEIGHT, self.__WIDTH), 255)
 
     def __dj_logo(self, frame):
-        self.__init()
+        self.init()
         frame.paste(logo, (self.__HEIGHT - 71, self.__WIDTH - 71))
 
     def __cpu_usage(self, frame):
-        self.__init()
+        self.init()
         draw = ImageDraw.Draw(frame)
         x, y = 0, 5
         xy = (x, y)
@@ -97,7 +98,7 @@ class EPDController(GUIController):
         draw.rectangle([ xy, (cpu, y + 5)], fill=0)
     
     def __ram_usage(self, frame):
-        self.__init()
+        self.init()
         draw = ImageDraw.Draw(frame)
         x, y = 0, 25
         xy = (x, y)
@@ -109,7 +110,7 @@ class EPDController(GUIController):
         draw.rectangle([ xy, (ram, y + 5)], fill=0)
 
     def __show_command(self, frame):
-        self.__init()
+        self.init()
         
         draw = ImageDraw.Draw(frame)
         
@@ -120,7 +121,7 @@ class EPDController(GUIController):
             draw.text((x, y + 16), f"/{self.__command}", font = font_lg, fill = 0)
     
     def __show_channels_count(self, frame):
-        self.__init()
+        self.init()
         draw = ImageDraw.Draw(frame)
         x, y = 0, 110
         
