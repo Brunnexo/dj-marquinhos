@@ -144,6 +144,7 @@ async def skip_command(interaction: discord.Interaction):
 @tree.command(name='help', description="Exibir opções de comando")
 async def help_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
+        
         msg = "**/play [URL]** - Tocar música a partir de um link\n"
         msg += "**/pause** - Pausar a reprodução\n"
         msg += "**/resume** - Continuar a reprodução\n"
@@ -151,9 +152,11 @@ async def help_command(interaction: discord.Interaction):
         msg += "**/stop** - Parar a reprodução\n"
         msg += "**/join** - Juntar-se ao canal de voz\n"
         msg += "**/leave** - Sair do canal de voz\n"
+        msg += "**/keep** - Ficar ou não ficar no canal\n"
         msg += "**/queue** - Exibir fila de reprodução\n"
         msg += "**/clear** - Limpar fila de reprodução\n"
         msg += "**/help** - Exibir opções de comando (esta mensagem)\n\n"
+        
         msg += "DJ Marquinhos criado por <@189162346063593473>"
         
         await interaction.followup.send(embed=utils.embed_message(description="📚 Comandos disponíveis", name="Lista", value=msg), ephemeral=True)
