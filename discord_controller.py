@@ -105,11 +105,13 @@ class DiscordConnection:
         fdel = __del_timestamp
     )
 
+
 class DiscordController:
     
     def __init__(self):
         self.__connections: Dict[int, DiscordConnection] = {}
         self.__playlist: Dict[int, List[PlatformHandler]] = {}
+        self.__deletions = set({})
     
     async def play(self, interaction: Interaction, url: str) -> Optional[str]:
         guild = interaction.guild
@@ -222,10 +224,14 @@ class DiscordController:
         self.__connections[guild.id].keep = True
 
     async def clean(self):
-        
         timestamp = round(time.time())
         
-        deletions = []
+        for id in self.__deletions:
+            if id in self.__connections:
+                self.__connections[id].client.cleanup()
+                del self.__connections[id]
+
+        self.__deletions.clear()
 
         for id in self.__connections:
             connection = self.__connections[id]
@@ -236,30 +242,36 @@ class DiscordController:
             client = connection.client
             
             if not client.is_connected():
-                await self.__disconnect_client(id, deletions=deletions, rs=None)
+                self.__deletions.add(id)
                 continue
             
             if len(channel.members) == 1:
-                await self.__disconnect_client(id, deletions=deletions, rs="falta de ouvintes")
+                await self.__disconnect_client(id, rs="falta de ouvintes")
             
             if not client.is_playing() and not client.is_paused():
                 delta = round(timestamp - connection.timestamp)
-                if delta > 60: await self.__disconnect_client(id, deletions=deletions)
+                if delta > 60: await self.__disconnect_client(id)
 
-        for id in deletions:
-            self.__connections[id].client.cleanup()
-            del self.__connections[id]
     
-    async def __disconnect_client(self, id: int, *, deletions: List[int] = None, rs: Optional[str] = "inatividade"):
+    async def __disconnect_client(self, id: int, *, rs: Optional[str] = "inatividade"):
         connection = self.__connections[id]
         
         interaction_channel = connection.interaction_channel
         
         if rs is not None:
             await interaction_channel.send(f"🚬 Estou saindo por **{rs}**...")
-            
-        await connection.client.disconnect()
-        if deletions is not None: deletions.append(id)
+        
+        client: VoiceClient = connection.client
+        
+        logger.debug(f"Desconectando VoiceClient do canal {client.channel.name}...")
+        
+        t1 = round(time.time() * 1000)
+        await client.disconnect()
+        t2 = round(time.time() * 1000)
+        
+        logger.debug(f"Tempo de execução: {t2 - t1}ms")
+        
+        self.__deletions.add(id)
     
     def clear_queue(self, guild: Guild):
         if guild.id in self.__playlist:
@@ -286,11 +298,7 @@ class DiscordController:
         if client: self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
 
     async def leave(self, interaction: Interaction):
-        deletions = []
-        
         guild = interaction.guild
         
         if guild.id in self.__connections:
-            await self.__disconnect_client(guild.id, deletions=deletions, rs=None)
-            del self.__connections[id]    
-        
+            await self.__disconnect_client(guild.id, rs=None)
