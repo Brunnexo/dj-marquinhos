@@ -117,8 +117,11 @@ async def stop_command(interaction: discord.Interaction):
 @tree.command(name='keep', description="Manter-se no canal")
 async def keep_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
-        controller.keep(interaction.guild)
-        await interaction.followup.send("😎 Vou ficar, com certeza!")
+        keep = controller.keep(interaction.guild)
+        
+        if keep is not None:
+            if keep: await interaction.followup.send("😎 Vou ficar, com certeza!")
+            else: await interaction.followup.send("🫡 Vou sair no momento certo!")
 
 @tree.command(name='join', description="Vou me juntar a você!")
 async def join_command(interaction: discord.Interaction):

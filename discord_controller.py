@@ -3,8 +3,6 @@ import time
 import logging
 from typing import Dict, List, Optional, Union
 
-
-
 # Discord.py
 from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction, TextChannel
 
@@ -17,7 +15,7 @@ from sound_platform import PlatformHandler, SoundPlatformException
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn -filter:a "volume=0.25"'}
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
 
 class DiscordConnection:
@@ -29,7 +27,9 @@ class DiscordConnection:
         self.__timestamp: float = time.time()
     
     def __get_keep(self) -> bool:
-        return self.__keep
+        keep = self.__keep
+        if keep: self.__timestamp = time.time()
+        return keep
     
     def __set_keep(self, keep: bool):
         self.__keep = keep
@@ -75,31 +75,31 @@ class DiscordConnection:
     def __del_interaction_channel(self):
         del self.__interaction_channel
 
-    keep = property(
+    keep: bool = property(
         fget = __get_keep,
         fset = __set_keep,
         fdel = __del_keep
     )
     
-    client = property(
+    client: VoiceClient = property(
         fget = __get_client,
         fset = __set_client,
         fdel = __del_client
     )
     
-    channel = property(
+    channel: VoiceChannel = property(
         fget = __get_channel,
         fset = __set_channel,
         fdel = __del_channel
     )
     
-    interaction_channel = property(
+    interaction_channel: InteractionChannel = property(
         fget = __get_interaction_channel,
         fset = __set_interaction_channel,
         fdel = __del_interaction_channel
     )
     
-    timestamp = property(
+    timestamp: float = property(
         fget = __get_timestamp,
         fset = __set_timestamp,
         fdel = __del_timestamp
@@ -148,7 +148,6 @@ class DiscordController:
         if guild.id not in self.__connections: return False
         
         connection = self.__connections[guild.id]
-        
         client = connection.client
         
         if client.is_playing():
@@ -186,17 +185,14 @@ class DiscordController:
     
     def play_next(self, guild: Guild, e: Exception) -> Optional[List[str]]:
         if e: raise SoundPlatformException(str(e))
-        
         if guild.id not in self.__playlist: return
         
         queue = self.__playlist[guild.id]
         
         if not queue: queue = []
-        
         client = self.__connections[guild.id].client
         
         if not client or not client.is_connected(): queue.clear()
-        
         if len(queue) > 0:
             platform = queue.pop(0)
             self.__platform_play(platform, client, guild)
@@ -219,9 +215,12 @@ class DiscordController:
 
         await interaction.followup.send("A fila está **vazia**!")
     
-    def keep(self, guild: Guild):
-        if guild.id not in self.__connections: return
-        self.__connections[guild.id].keep = True
+    def keep(self, guild: Guild) -> Optional[bool]:
+        if guild.id not in self.__connections: return None
+        
+        connection = self.__connections[guild.id]
+        connection.keep = not connection.keep
+        return connection.keep
 
     async def clean(self):
         timestamp = round(time.time())
@@ -295,6 +294,7 @@ class DiscordController:
         interaction_channel = interaction.channel
         
         client: VoiceClient = await channel.connect()
+        
         if client: self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
 
     async def leave(self, interaction: Interaction):
