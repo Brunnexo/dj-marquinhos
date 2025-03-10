@@ -42,10 +42,10 @@ class EPDController(GUIController):
         self.init()
         
         self.__channels = update.channels_count
+        self.__user = update.user
         self.__command = update.command
         self.__cpu_usage_value = update.cpu_usage
         self.__ram_usage_value = update.ram_usage
-        self.__channels = update.channels_count
         
         frame = self.__blank()
         
