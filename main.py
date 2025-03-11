@@ -4,10 +4,11 @@ KEY = 'DJ_DISCORD_TOKEN'
 import os
 import logging
 import signal
+import multiprocessing
 
 # Imports Discord
 import discord
-from discord import app_commands
+from discord import app_commands, WebhookMessage, Message
 from discord.ext import tasks
 
 # Extras
@@ -51,6 +52,12 @@ buttons = None
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
+def process_queues():
+    logger.debug("Iniciando processamento de fila...")
+    process = multiprocessing.Process(target=controller.process_queue)
+    process.start()
+    process.join()
+
 def get_buttons():
     global buttons
     if buttons is None:
@@ -61,19 +68,43 @@ def get_buttons():
 
 async def interaction_play(interaction: discord.Interaction, url: str):
     try:
+        msg: WebhookMessage = await interaction.followup.send("💿 Carregando sua música...")
         title = await controller.play(interaction, url)
-        
-        if title: embed = utils.embed_message(description="💿 Tocando agora!", name=title, value=url)
-        else: embed = utils.embed_message(description="💿 Colocando em fila...", name=PlatformHandler(url).title(), value=url)
-        
-        await interaction.followup.send(embed=embed, view=get_buttons())
+        if title:
+            await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
+        else:
+            await msg.edit(content="💿 Colocando em fila...")
+            process_queues()
+            await msg.delete(delay=10)
+            
+
     except SoundPlatformException as e:
         logger.error(e)
         await interaction.followup.send(str(e))
     except Exception as e:
         logger.error(e)
         await interaction.followup.send("Erro inesperado: {err}".format(err=str(e).lower()))
+
+async def message_play(message: discord.Message, url: str):
+    try:
+        msg: Message = await message.reply("💿 Carregando sua música...")
         
+        title = await controller.play(message.guild, message.author.voice.channel, url)
+        
+        if title:
+            await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
+        else:
+            await msg.edit("💿 Colocando em fila...")
+            process_queues()
+            await msg.delete(delay=10)
+            
+
+    except SoundPlatformException as e:
+        logger.error(e)
+        await message.reply(str(e))
+    except Exception as e:
+        logger.error(e)
+        await message.reply("Erro inesperado: {err}".format(err=str(e).lower()))
 
 @tree.command(name='play', description="Tocar música a partir de um link")
 @app_commands.describe(url="URL do YouTube ou outra plataforma para tocar")
@@ -82,6 +113,7 @@ async def play_command(interaction: discord.Interaction, url: str):
         if not PlatformHandler.valid_url(url):
             await interaction.followup.send("❌ URL inválida!")
             return
+        
         
         await interaction_play(interaction, url)
         
@@ -172,21 +204,6 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
     gui_handler.set_command(command_name)
     gui_handler.set_user(username)
 
-async def message_play(message: discord.Message, url: str):
-    try:
-        title = await controller.play(message.guild, message.author.voice.channel, url)
-        
-        if title: embed = utils.embed_message(description="💿 Tocando agora!", name=title, value=url)
-        else: embed = utils.embed_message(description="💿 Colocando em fila...", name=PlatformHandler(url).title(), value=url)
-        
-        await message.reply(embed=embed, view=get_buttons())
-    except SoundPlatformException as e:
-        logger.error(e)
-        await message.reply(str(e))
-    except Exception as e:
-        logger.error(e)
-        await message.reply("Erro inesperado: {err}".format(err=str(e).lower()))
-
 @client.event
 async def on_message(message: discord.Message):
     if message.author == client.user: return
@@ -234,5 +251,4 @@ if __name__ == "__main__":
     gui_handler.splash()
     
     signal.signal(signal.SIGTERM, signal_handler)
-    
     client.run(TOKEN)

@@ -1,6 +1,7 @@
 # Python
 import time
 import logging
+
 from typing import Dict, List, Optional, Union
 
 # Discord.py
@@ -17,6 +18,7 @@ FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconne
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
+playlist: Dict[int, List[PlatformHandler]] = {}
 
 class DiscordConnection:
     def __init__(self, client: VoiceClient, channel: VoiceChannel, interaction_channel: InteractionChannel):
@@ -110,9 +112,8 @@ class DiscordController:
     
     def __init__(self):
         self.__connections: Dict[int, DiscordConnection] = {}
-        self.__playlist: Dict[int, List[PlatformHandler]] = {}
         self.__deletions = set({})
-    
+
     async def play(self, interaction: Interaction, url: str) -> Optional[str]:
         guild = interaction.guild
         channel = interaction.user.voice.channel
@@ -181,13 +182,16 @@ class DiscordController:
         return self.play_next(guild, None)
     
     def will_queue(self, guild: Guild) -> bool:
-        return guild.id in self.__connections or guild.id in self.__playlist
+        global playlist
+        return guild.id in self.__connections or guild.id in playlist
     
     def play_next(self, guild: Guild, e: Exception) -> Optional[List[str]]:
-        if e: raise SoundPlatformException(str(e))
-        if guild.id not in self.__playlist: return
+        global playlist
         
-        queue = self.__playlist[guild.id]
+        if e: raise SoundPlatformException(str(e))
+        if guild.id not in playlist: return
+        
+        queue = playlist[guild.id]
         
         if not queue: queue = []
         client = self.__connections[guild.id].client
@@ -199,10 +203,12 @@ class DiscordController:
             return [platform.raw_url(), platform.title()]
     
     async def show_queue(self, interaction: Interaction):
+        global playlist
+        
         guild_id = interaction.guild.id
         
-        if guild_id in self.__playlist:
-            queue = self.__playlist[guild_id]
+        if guild_id in playlist:
+            queue = playlist[guild_id]
             
             if queue:
                 msg = ""
@@ -251,6 +257,13 @@ class DiscordController:
                 delta = round(timestamp - connection.timestamp)
                 if delta > 60: await self.__disconnect_client(id)
 
+    @staticmethod
+    def process_queue():
+        global playlist
+        
+        for id in playlist:
+            for handler in playlist[id]:
+                if not handler.url_processed: handler.url()
     
     async def __disconnect_client(self, id: int, *, rs: Optional[str] = "inatividade"):
         connection = self.__connections[id]
@@ -273,18 +286,20 @@ class DiscordController:
         self.__deletions.add(id)
     
     def clear_queue(self, guild: Guild):
-        if guild.id in self.__playlist:
-            queue = self.__playlist[guild.id]
-            if queue: self.__playlist[guild.id] = []
+        global playlist
+        
+        if guild.id in playlist:
+            queue = playlist[guild.id]
+            if queue: playlist[guild.id] = []
                 
     def queue(self, guild: Guild, url: str):
+        global playlist
+        
         queue = []
         
-        if guild.id in self.__playlist: queue = self.__playlist[guild.id]
-        
+        if guild.id in playlist: queue = playlist[guild.id]
         queue.append(PlatformHandler(url))
-        
-        self.__playlist[guild.id] = queue
+        playlist[guild.id] = queue
     
     def connections_count(self): return len(self.__connections)
     

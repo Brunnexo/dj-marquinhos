@@ -31,7 +31,10 @@ class SoundPlatform(ABC):
 class PlatformHandler:
     def __init__(self, url: str):
         self.__url = url
+        self.__stream_url = ""
+        
         self.__platform = None
+        self.url_processed = False
 
         for platform in SoundPlatform.__subclasses__():
             if platform.valid_url(self.__url):
@@ -41,7 +44,11 @@ class PlatformHandler:
         else: logger.debug(f"{self.__platform.__name__}: {self.__url}")
 
     def url(self) -> str:
-        return self.__platform(self.__url).url()
+        if not self.url_processed:
+            self.__stream_url = self.__platform(self.__url).url()
+            self.url_processed = True
+        
+        return self.__stream_url
 
     def title(self) -> str:
         def_platform = self.__platform(self.__url)
