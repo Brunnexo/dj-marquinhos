@@ -24,7 +24,7 @@ from sound_platform import PlatformHandler, SoundPlatformException
 
 if "tkinter" in str(utils.gui_arg()): from tkinter_controller import TKInterController
 
-from epd_controller import EPDController
+if utils.is_raspberrypi(): from epd_controller import EPDController
 from gui_controller import GUIHandler
 
 gui_handler = GUIHandler()
