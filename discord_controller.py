@@ -1,8 +1,6 @@
 # Python
 import time
 import logging
-import os
-import asyncio
 from typing import Dict, List, Optional, Union
 
 # Discord.py
@@ -321,9 +319,7 @@ class DiscordController:
         
         if client:
             if play_intro:
-                path = os.path.dirname(__file__)
-                intro_path = f"{path}\\intro.mp3"
-                source = FFmpegPCMAudio(source=intro_path, **LOCAL_FFMPEG_OPTIONS)
+                source = FFmpegPCMAudio(source="./intro.mp3", **LOCAL_FFMPEG_OPTIONS)
                 client.play(source)
 
             self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)

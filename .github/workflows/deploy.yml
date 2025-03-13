@@ -14,6 +14,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Anunciar deploy
+        run: |
+            if ! command -v <the_command> 2>&1 >/dev/null; then
+              sudo wall -n "O DJ Marquinhos será atualizado!"
+            fi
+
       - name: Criar serviço
         run: |
             if systemctl is-active --quiet dj-marquinhos.service; then
