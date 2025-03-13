@@ -240,9 +240,7 @@ class DiscordController:
 
         for id in self.__connections:
             connection = self.__connections[id]
-            
-            if connection.keep: continue
-            
+                        
             channel = connection.channel
             client = connection.client
             
@@ -252,6 +250,8 @@ class DiscordController:
             
             if len(channel.members) == 1:
                 await self.__disconnect_client(id, rs="falta de ouvintes")
+                
+            if connection.keep: continue
             
             if not client.is_playing() and not client.is_paused():
                 delta = round(timestamp - connection.timestamp)
