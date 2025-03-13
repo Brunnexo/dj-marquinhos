@@ -3,7 +3,7 @@ import logging
 
 # Logger
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='dj-marquinhos.log', level=logging.DEBUG)
+logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
 class SoundPlatformException(Exception): ...
 

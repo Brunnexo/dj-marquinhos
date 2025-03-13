@@ -4,7 +4,7 @@ KEY = 'DJ_DISCORD_TOKEN'
 import os
 import logging
 import signal
-import multiprocessing
+import asyncio
 
 # Imports Discord
 import discord
@@ -52,12 +52,6 @@ buttons = None
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
-def process_queues():
-    logger.debug("Iniciando processamento de fila...")
-    process = multiprocessing.Process(target=controller.process_queue)
-    process.start()
-    process.join()
-
 def get_buttons():
     global buttons
     if buttons is None:
@@ -69,13 +63,16 @@ def get_buttons():
 async def interaction_play(interaction: discord.Interaction, url: str):
     try:
         msg: WebhookMessage = await interaction.followup.send("💿 Carregando sua música...")
+        
         title = await controller.play(interaction, url)
         if title:
             await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
         else:
             await msg.edit(content="💿 Colocando em fila...")
-            process_queues()
-            await msg.delete(delay=10)
+            queue_task = asyncio.create_task(controller.process_queue())
+            await msg.delete(delay=5)
+            await queue_task
+            
             
 
     except SoundPlatformException as e:
@@ -95,9 +92,9 @@ async def message_play(message: discord.Message, url: str):
             await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
         else:
             await msg.edit("💿 Colocando em fila...")
-            process_queues()
-            await msg.delete(delay=10)
-            
+            queue_task = asyncio.create_task(controller.process_queue())
+            await msg.delete(delay=5)
+            await queue_task
 
     except SoundPlatformException as e:
         logger.error(e)
@@ -114,8 +111,28 @@ async def play_command(interaction: discord.Interaction, url: str):
             await interaction.followup.send("❌ URL inválida!")
             return
         
-        await interaction_play(interaction, url)
+        await asyncio.create_task(interaction_play(interaction, url))
         
+@client.event
+async def on_message(message: discord.Message):
+    if message.author == client.user: return
+    
+    if await utils.validate_message(message):
+        if client.user.mentioned_in(message):
+            msg = message.content
+            if "play" in msg:
+                if len(message.attachments) > 0:
+                    attachment = message.attachments[0]
+                    url = attachment.url
+                    if not PlatformHandler.valid_url(url):
+                        await message.reply("❌ URL inválida!")
+                        return
+                    await asyncio.create_task(message_play(message, url))
+                else:
+                    mp3_link = MP3Platform.extract_mp3_url(msg)
+                    if not mp3_link: await message.reply("🐻 Opa, bão!?")
+                    else: await asyncio.create_task(message_play(message, mp3_link))
+
 @tree.command(name='queue', description="Exibir fila de reprodução")
 async def queue_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
@@ -202,26 +219,6 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
     
     gui_handler.set_command(command_name)
     gui_handler.set_user(username)
-
-@client.event
-async def on_message(message: discord.Message):
-    if message.author == client.user: return
-    
-    if await utils.validate_message(message):
-        if client.user.mentioned_in(message):
-            msg = message.content
-            if "play" in msg:
-                if len(message.attachments) > 0:
-                    attachment = message.attachments[0]
-                    url = attachment.url
-                    if not PlatformHandler.valid_url(url):
-                        await message.reply("❌ URL inválida!")
-                        return
-                    await message_play(message, url)
-                else:
-                    mp3_link = MP3Platform.extract_mp3_url(msg)
-                    if not mp3_link: await message.reply("🐻 Opa, bão!?")
-                    else: await message_play(message, mp3_link)
 
 @tasks.loop(seconds = gui_handler.interval())
 async def background_task():

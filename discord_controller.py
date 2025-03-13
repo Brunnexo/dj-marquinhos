@@ -136,8 +136,9 @@ class DiscordController:
         if not client.is_playing():
             platform = PlatformHandler(url)
             return self.__platform_play(platform, client, guild)
-
-        else: self.queue(guild, url)
+        else: 
+            
+            await self.queue(guild, url)
     
     def __platform_play(self, platform: PlatformHandler, client: VoiceClient, guild: Guild) -> str:
         source = FFmpegPCMAudio(platform.url(), **FFMPEG_OPTIONS)
@@ -258,7 +259,7 @@ class DiscordController:
                 if delta > 60: await self.__disconnect_client(id)
 
     @staticmethod
-    def process_queue():
+    async def process_queue():
         global playlist
         
         for id in playlist:
@@ -292,13 +293,16 @@ class DiscordController:
             queue = playlist[guild.id]
             if queue: playlist[guild.id] = []
                 
-    def queue(self, guild: Guild, url: str):
+    async def queue(self, guild: Guild, url: str):
         global playlist
         
         queue = []
         
-        if guild.id in playlist: queue = playlist[guild.id]
+        if guild.id in playlist:
+            queue = playlist[guild.id]
+
         queue.append(PlatformHandler(url))
+        
         playlist[guild.id] = queue
     
     def connections_count(self): return len(self.__connections)
