@@ -29,6 +29,10 @@ from gui_controller import GUIHandler
 
 gui_handler = GUIHandler()
 
+
+BACKGROUND_TASK_INTERVAL = gui_handler.interval() or 2
+
+
 TOKEN = utils.token_arg() or os.getenv(KEY)
 
 if not TOKEN: raise ValueError(f'Token do BOT não definido! Defina o token na variável de ambiente "{KEY}" para prosseguir com a execução.')
@@ -175,8 +179,7 @@ async def keep_command(interaction: discord.Interaction):
 async def join_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
         await controller.join(interaction, play_intro=True)
-        await interaction.followup.send("🐻 Opa, bão!?")
-
+        
 @tree.command(name='leave', description="Sairei do canal de voz")
 async def leave_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
@@ -220,9 +223,9 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
     gui_handler.set_command(command_name)
     gui_handler.set_user(username)
 
-@tasks.loop(seconds = gui_handler.interval())
+@tasks.loop(seconds = BACKGROUND_TASK_INTERVAL)
 async def background_task():
-    await controller.clean()
+    #await controller.clean()
     gui_handler.set_channels_count(controller.connections_count())
     gui_handler.tick()
 

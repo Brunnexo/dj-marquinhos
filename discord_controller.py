@@ -114,22 +114,25 @@ class DiscordController:
         self.__connections: Dict[int, DiscordConnection] = {}
         self.__deletions = set({})
 
-    async def play(self, interaction: Interaction, url: str) -> Optional[str]:
-        guild = interaction.guild
+    async def __move_to_user(self, interaction: Interaction):
         channel = interaction.user.voice.channel
-        
-        if guild.id not in self.__connections: await self.join(interaction)
-        
+        guild = interaction.guild
         user = interaction.user
-        
         connection = self.__connections[guild.id]
-        
         members = connection.channel.members
-        user_connected = len([member for member in members if member.id == user.id]) > 1
+        user_connected = len([member for member in members if member.id == user.id]) > 0
         
         if not user_connected: 
             await connection.client.move_to(channel)
             self.__connections[guild.id].channel = channel
+
+    async def play(self, interaction: Interaction, url: str) -> Optional[str]:
+        guild = interaction.guild
+        connection = self.__connections[guild.id]
+        
+        if guild.id not in self.__connections: await self.join(interaction)
+        
+        self.__move_to_user(interaction)
         
         client = connection.client
         
@@ -315,15 +318,19 @@ class DiscordController:
         channel = interaction.user.voice.channel
         interaction_channel = interaction.channel
         
-        client: VoiceClient = await channel.connect()
+        if guild.id in self.__connections:
+            await self.__move_to_user(interaction)
+        else:
+            client: VoiceClient = await channel.connect()
+            if client:
+                if play_intro:
+                    source = FFmpegPCMAudio(source="./intro.mp3", **LOCAL_FFMPEG_OPTIONS)
+                    client.play(source)
+
+                self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
+            
+        await interaction.followup.send("🐻 Opa, bão!?")
         
-        if client:
-            if play_intro:
-                source = FFmpegPCMAudio(source="./intro.mp3", **LOCAL_FFMPEG_OPTIONS)
-                client.play(source)
-
-            self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
-
     async def leave(self, interaction: Interaction):
         guild = interaction.guild
         
