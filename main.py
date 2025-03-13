@@ -225,7 +225,7 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
 
 @tasks.loop(seconds = BACKGROUND_TASK_INTERVAL)
 async def background_task():
-    #await controller.clean()
+    await controller.clean()
     gui_handler.set_channels_count(controller.connections_count())
     gui_handler.tick()
 
