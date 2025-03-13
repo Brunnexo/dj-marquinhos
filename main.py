@@ -114,7 +114,6 @@ async def play_command(interaction: discord.Interaction, url: str):
             await interaction.followup.send("❌ URL inválida!")
             return
         
-        
         await interaction_play(interaction, url)
         
 @tree.command(name='queue', description="Exibir fila de reprodução")

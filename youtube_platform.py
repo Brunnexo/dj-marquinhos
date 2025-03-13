@@ -43,7 +43,7 @@ class YouTubePlatform(SoundPlatform):
         self.__title = None
     
     def title(self) -> str:
-        if self.__title is not None:
+        if self.__title is not None and not bool(self.__title.strip()):
             logger.debug(f"Título no YouTube: {self.__title} de {self.__url}")
             return self.__title
         
