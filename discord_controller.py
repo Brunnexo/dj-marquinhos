@@ -2,6 +2,8 @@
 import time
 import logging
 from typing import Dict, List, Optional, Union
+import random
+
 
 # Discord.py
 from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction, TextChannel
@@ -324,7 +326,8 @@ class DiscordController:
             client: VoiceClient = await channel.connect()
             if client:
                 if play_intro:
-                    source = FFmpegPCMAudio(source="./intro.mp3", **LOCAL_FFMPEG_OPTIONS)
+                    intro_num = random.randint(1, 2)
+                    source = FFmpegPCMAudio(source=f"./intro_{intro_num}.mp3", **LOCAL_FFMPEG_OPTIONS)
                     client.play(source)
 
                 self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
