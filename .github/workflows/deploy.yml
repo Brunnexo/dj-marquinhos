@@ -16,7 +16,7 @@ jobs:
 
       - name: Anunciar deploy
         run: |
-            sudo wall -n "O DJ Marquinhos será atualizado!"
+            sudo wall -n "O DJ Marquinhos será atualizado agora..."
 
       - name: Criar serviço
         run: |
@@ -93,3 +93,4 @@ jobs:
       - name: Iniciar serviço
         run: |
             sudo systemctl start dj-marquinhos.service
+            sudo wall -n "DJ Marquinhos atualizado!!"
