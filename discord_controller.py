@@ -1,7 +1,8 @@
 # Python
 import time
 import logging
-
+import os
+import asyncio
 from typing import Dict, List, Optional, Union
 
 # Discord.py
@@ -14,6 +15,7 @@ import utils
 from sound_platform import PlatformHandler, SoundPlatformException
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn -filter:a "volume=0.25"'}
+LOCAL_FFMPEG_OPTIONS = {'options': '-vn -filter:a "volume=0.15"'}
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
@@ -195,7 +197,10 @@ class DiscordController:
         queue = playlist[guild.id]
         
         if not queue: queue = []
-        client = self.__connections[guild.id].client
+        
+        connection: DiscordConnection = self.__connections[guild.id]
+        
+        client = connection.client
         
         if not client or not client.is_connected(): queue.clear()
         if len(queue) > 0:
@@ -307,14 +312,21 @@ class DiscordController:
     
     def connections_count(self): return len(self.__connections)
     
-    async def join(self, interaction: Interaction):
+    async def join(self, interaction: Interaction, play_intro: bool = False):
         guild = interaction.guild
         channel = interaction.user.voice.channel
         interaction_channel = interaction.channel
         
         client: VoiceClient = await channel.connect()
         
-        if client: self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
+        if client:
+            if play_intro:
+                path = os.path.dirname(__file__)
+                intro_path = f"{path}\\intro.mp3"
+                source = FFmpegPCMAudio(source=intro_path, **LOCAL_FFMPEG_OPTIONS)
+                client.play(source)
+
+            self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
 
     async def leave(self, interaction: Interaction):
         guild = interaction.guild
