@@ -16,9 +16,7 @@ jobs:
 
       - name: Anunciar deploy
         run: |
-            if ! command -v <the_command> 2>&1 >/dev/null; then
-              sudo wall -n "O DJ Marquinhos será atualizado!"
-            fi
+            sudo wall -n "O DJ Marquinhos será atualizado!"
 
       - name: Criar serviço
         run: |
