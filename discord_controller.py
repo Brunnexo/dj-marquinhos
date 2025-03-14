@@ -124,17 +124,16 @@ class DiscordController:
         members = connection.channel.members
         user_connected = len([member for member in members if member.id == user.id]) > 0
         
-        if not user_connected: 
+        if not user_connected and not connection.client.is_playing(): 
             await connection.client.move_to(channel)
             self.__connections[guild.id].channel = channel
 
     async def play(self, interaction: Interaction, url: str) -> Optional[str]:
         guild = interaction.guild
-        connection = self.__connections[guild.id]
         
         if guild.id not in self.__connections: await self.join(interaction)
         
-        self.__move_to_user(interaction)
+        connection = self.__connections[guild.id]
         
         client = connection.client
         
@@ -142,7 +141,6 @@ class DiscordController:
             platform = PlatformHandler(url)
             return self.__platform_play(platform, client, guild)
         else: 
-            
             await self.queue(guild, url)
     
     def __platform_play(self, platform: PlatformHandler, client: VoiceClient, guild: Guild) -> str:
@@ -321,6 +319,13 @@ class DiscordController:
         interaction_channel = interaction.channel
         
         if guild.id in self.__connections:
+            connection: DiscordConnection = self.__connections[guild.id]
+            
+            if not connection.client.is_connected():
+                self.__deletions.add(guild.id)
+                await self.clean()
+                await self.join(interaction, play_intro)
+            
             await self.__move_to_user(interaction)
         else:
             client: VoiceClient = await channel.connect()
