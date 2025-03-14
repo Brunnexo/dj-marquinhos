@@ -22,16 +22,7 @@ from youtube_platform import YouTubePlatform
 
 from sound_platform import PlatformHandler, SoundPlatformException
 
-if "tkinter" in str(utils.gui_arg()): from tkinter_controller import TKInterController
-
-if utils.is_raspberrypi(): from epd_controller import EPDController
-from gui_controller import GUIHandler
-
-gui_handler = GUIHandler()
-
-
-BACKGROUND_TASK_INTERVAL = gui_handler.interval() or 2
-
+BACKGROUND_TASK_INTERVAL = 2
 
 TOKEN = utils.token_arg() or os.getenv(KEY)
 
@@ -219,15 +210,10 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
     command_name = command.name
     
     logger.info(f"[{user_id}] {username} usou /{command_name}")
-    
-    gui_handler.set_command(command_name)
-    gui_handler.set_user(username)
 
 @tasks.loop(seconds = BACKGROUND_TASK_INTERVAL)
 async def background_task():
     await controller.clean()
-    gui_handler.set_channels_count(controller.connections_count())
-    gui_handler.tick()
 
 @client.event
 async def on_connect():
@@ -240,14 +226,10 @@ async def on_ready():
 
 def signal_handler(sig, frame):
     client.close()
-    gui_handler.clear()
     raise SystemExit("Encerrando BOT...")
 
 if __name__ == "__main__":
     PlatformHandler.show_classes()
-    
-    gui_handler.init()
-    gui_handler.splash()
     
     signal.signal(signal.SIGTERM, signal_handler)
     client.run(TOKEN)
