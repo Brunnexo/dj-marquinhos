@@ -5,6 +5,7 @@ import os
 import logging
 import signal
 import asyncio
+import multiprocessing
 
 # Imports Discord
 import discord
@@ -64,9 +65,8 @@ async def interaction_play(interaction: discord.Interaction, url: str):
             await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
         else:
             await msg.edit(content="💿 Colocando em fila...")
-            queue_task = asyncio.create_task(controller.process_queue())
             await msg.delete(delay=5)
-            await queue_task
+            multiprocessing.Process(target=controller.process_queue).start()
             
             
 
@@ -87,9 +87,8 @@ async def message_play(message: discord.Message, url: str):
             await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
         else:
             await msg.edit("💿 Colocando em fila...")
-            queue_task = asyncio.create_task(controller.process_queue())
             await msg.delete(delay=5)
-            await queue_task
+            multiprocessing.Process(target=controller.process_queue).start()
 
     except SoundPlatformException as e:
         logger.error(e)

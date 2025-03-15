@@ -15,7 +15,7 @@ import utils
 from sound_platform import PlatformHandler, SoundPlatformException
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn -filter:a "volume=0.25"'}
-LOCAL_FFMPEG_OPTIONS = {'options': '-vn -filter:a "volume=0.15"'}
+LOCAL_FFMPEG_OPTIONS = {'options': '-vn -filter:a "volume=1.00"'}
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
@@ -265,7 +265,7 @@ class DiscordController:
                 if delta > 60: await self.__disconnect_client(id)
 
     @staticmethod
-    async def process_queue():
+    def process_queue():
         global playlist
         
         for id in playlist:
@@ -330,13 +330,12 @@ class DiscordController:
         else:
             client: VoiceClient = await channel.connect()
             if client:
-                if play_intro:
-                    intro_num = random.randint(1, 2)
-                    source = FFmpegPCMAudio(source=f"./intro_{intro_num}.mp3", **LOCAL_FFMPEG_OPTIONS)
-                    client.play(source)
-
                 self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
-            
+                
+                if play_intro:
+                    source = FFmpegPCMAudio(source=f"./intro_{random.randint(1, 2)}.mp3", **LOCAL_FFMPEG_OPTIONS)
+                    client.play(source, after = lambda e: self.play_next(guild, e))
+
         await interaction.followup.send("🐻 Opa, bão!?")
         
     async def leave(self, interaction: Interaction):
