@@ -9,7 +9,7 @@ import multiprocessing
 
 # Imports Discord
 import discord
-from discord import app_commands, WebhookMessage, Message
+from discord import app_commands, WebhookMessage, Message, File
 from discord.ext import tasks
 
 # Extras
@@ -131,6 +131,18 @@ async def on_message(message: discord.Message):
 async def queue_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
         await controller.show_queue(interaction)
+        
+@tree.command(name='pix', description="Exibir o QR Code do PIX")
+async def pix_command(interaction: discord.Interaction):
+    await interaction.response.defer()
+    
+    image = File("./pix.png")
+    embed = discord.Embed(title="PIX para doação", description="☕ Me compre um café...\n...está **muito** caro!", color=0x993399)
+    embed.set_image(url="attachment://pix.png")
+    embed.set_footer(text="O desenvolvedor agradece!")
+    msg: WebhookMessage = await interaction.followup.send(embed=embed, file=image)
+    
+    await msg.delete(delay=60)
 
 @tree.command(name='clear', description="Limpar fila de reprodução")
 async def clear_command(interaction: discord.Interaction):
@@ -196,6 +208,7 @@ async def help_command(interaction: discord.Interaction):
         msg += "**/keep** - Ficar ou não ficar no canal\n"
         msg += "**/queue** - Exibir fila de reprodução\n"
         msg += "**/clear** - Limpar fila de reprodução\n"
+        msg += "**/pix** - **Já sabe, né?**\n"
         msg += "**/help** - Exibir opções de comando (esta mensagem)\n\n"
         
         msg += "DJ Marquinhos criado por <@189162346063593473>"
@@ -222,6 +235,8 @@ async def on_connect():
 async def on_ready():
     await tree.sync()
     logger.info(f"Entrei como {client.user.name}")
+    await client.change_presence(status=discord.Status.online, activity=discord.Streaming(name='/join', url="https://www.devclub.dev.br/dj-marquinhos"))
+
 
 def signal_handler(sig, frame):
     client.close()
