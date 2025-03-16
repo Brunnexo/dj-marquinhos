@@ -181,6 +181,7 @@ async def keep_command(interaction: discord.Interaction):
 async def join_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):
         await controller.join(interaction, play_intro=True)
+        await interaction.followup.send("🐻 Opa, bão!?")
         
 @tree.command(name='leave', description="Sairei do canal de voz")
 async def leave_command(interaction: discord.Interaction):
