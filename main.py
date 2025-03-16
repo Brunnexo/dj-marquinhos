@@ -6,6 +6,7 @@ import logging
 import signal
 import asyncio
 import multiprocessing
+from datetime import datetime
 
 # Imports Discord
 import discord
@@ -224,9 +225,30 @@ async def on_app_command_completion(interaction: discord.Interaction, command: d
     
     logger.info(f"[{user_id}] {username} usou /{command_name}")
 
+def clear_cache():
+    get_youtube_obj_cache = YouTubePlatform.get_youtube_obj.cache_info()
+    get_stream_url_cache = YouTubePlatform.get_stream_url.cache_info()
+
+    if get_youtube_obj_cache.currsize > 0 or get_stream_url_cache.currsize > 0:
+        logger.setLevel(logging.DEBUG)
+        
+        logger.debug("Informações do cache:")
+        
+        logger.debug(f"YouTubePlatform::get_youtube_obj - caches salvos: {get_youtube_obj_cache.currsize}")
+        logger.debug("Limpando cache YouTubePlatform::get_youtube_obj...")
+        YouTubePlatform.get_youtube_obj.cache_clear()
+        
+        logger.debug(f"YouTubePlatform::get_stream_url - caches salvos: {get_stream_url_cache.currsize}")
+        logger.debug("Limpando cache YouTubePlatform::get_stream_url...")
+        YouTubePlatform.get_stream_url.cache_clear()
+        
+        logger.setLevel(logging.INFO)
+
 @tasks.loop(seconds = BACKGROUND_TASK_INTERVAL)
 async def background_task():
     await controller.clean()
+    now = datetime.now()
+    if now.hour == 0 and now.minute == 0: clear_cache()
 
 @client.event
 async def on_connect():
