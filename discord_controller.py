@@ -20,7 +20,61 @@ LOCAL_FFMPEG_OPTIONS = {'options': '-vn -filter:a "volume=1.00"'}
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='dj-marquinhos.log', level=logging.INFO)
 
-playlist: Dict[int, List[PlatformHandler]] = {}
+class DiscordPlaylist:
+    
+    def __init__(self, *, index = -1, list: List[PlatformHandler] = []):
+        self.__index: int = index
+        self.__list: List[PlatformHandler] = list
+        self.__stop = False
+
+    def add(self, platform: PlatformHandler):
+        self.__list.append(platform)
+    
+    def has_sound(self) -> bool:
+        return len(self.__list) > 0
+    
+    def next(self) -> Optional[PlatformHandler]:
+        if self.__stop:
+            self.__stop = False
+            return None
+
+        self.__index += 1
+        
+        if len(self.__list) >= (self.__index + 1):
+            return self.__list[self.__index]
+        
+    def previous(self) -> Optional[PlatformHandler]:
+        if self.__stop: 
+            self.__stop = False
+            return None
+
+        self.__index -= 1
+        
+        if len(self.__list) >= (self.__index + 1):
+            return self.__list[self.__index]
+
+    def get_first(self) -> Optional[PlatformHandler]:
+        if self.has_sound(): return self.__list[0]
+        else: return None
+        
+    def get_last(self) -> Optional[PlatformHandler]:
+        if self.has_sound(): return self.__list[-1]
+        else: return None
+    
+    def get_list(self) -> List[PlatformHandler]:
+        return self.__list
+    
+    def is_empty(self) -> bool:
+        return len(self.__list) == 0
+    
+    def stop(self):
+        self.__stop = True
+    
+    def clear(self):
+        self.__list.clear()
+    
+
+playlist: Dict[int, DiscordPlaylist] = {}
 
 class DiscordConnection:
     def __init__(self, client: VoiceClient, channel: VoiceChannel, interaction_channel: InteractionChannel):
@@ -144,8 +198,17 @@ class DiscordController:
             await self.queue(guild, url)
     
     def __platform_play(self, platform: PlatformHandler, client: VoiceClient, guild: Guild) -> str:
+        global playlist
+        
+        if guild.id not in playlist:
+            discord_playlist = DiscordPlaylist()
+            discord_playlist.add(platform)
+            playlist[guild.id] = discord_playlist
+        
         source = FFmpegPCMAudio(platform.url(), **FFMPEG_OPTIONS)
+        
         source.read()
+        
         client.play(source, after = lambda e: self.play_next(guild, e))
         return platform.title()
     
@@ -174,12 +237,22 @@ class DiscordController:
         if client: client.resume()
     
     def stop(self, guild: Guild):
+        global playlist
         if guild.id not in self.__connections: return
+        
+        discord_playlist: DiscordPlaylist = playlist[guild.id]
+        discord_playlist.stop()
+        
+        
         client = self.__connections[guild.id].client
-        if client: client.stop()
+
+        if client:
+            client.pause()
+            client.stop()
 
     def skip(self, guild: Guild) -> Optional[List[str]]:
         if guild.id not in self.__connections: return
+        
         client = self.__connections[guild.id].client
         if client: client.stop()
         
@@ -195,34 +268,36 @@ class DiscordController:
         if e: raise SoundPlatformException(str(e))
         if guild.id not in playlist: return
         
-        queue = playlist[guild.id]
         
-        if not queue: queue = []
-        
+        discord_playlist: DiscordPlaylist = playlist[guild.id]
         connection: DiscordConnection = self.__connections[guild.id]
         
         client = connection.client
         
-        if not client or not client.is_connected(): queue.clear()
-        if len(queue) > 0:
-            platform = queue.pop(0)
-            self.__platform_play(platform, client, guild)
-            return [platform.raw_url(), platform.title()]
+        if not client or not client.is_connected(): discord_playlist.clear()
+        if not discord_playlist.is_empty():
+            platform = discord_playlist.next()
+            
+            if platform is not None:
+                self.__platform_play(platform, client, guild)
+                return [platform.raw_url(), platform.title()]
     
     async def show_queue(self, interaction: Interaction):
         global playlist
         
-        guild_id = interaction.guild.id
+        guild = interaction.guild
         
-        if guild_id in playlist:
-            queue = playlist[guild_id]
+        if guild.id in playlist:
+            discord_playlist: DiscordPlaylist = playlist[guild.id]
             
-            if queue:
+            if not discord_playlist.is_empty():
+                queue = discord_playlist.get_list()
+                
                 msg = ""
                 for i in range(len(queue)): 
                     msg += f"{i + 1}. **{queue[i].title()}**"
                     if (i < len(queue) - 1): msg += "\n"
-                
+
                 await interaction.followup.send(embed=utils.embed_message(description="🎵 Fila de reprodução", name="Lista", value=msg))
                 return
 
@@ -269,8 +344,10 @@ class DiscordController:
         global playlist
         
         for id in playlist:
-            for handler in playlist[id]:
-                if not handler.url_processed: handler.url()
+            discord_playlist: DiscordPlaylist = playlist[id]
+            
+            if discord_playlist.has_sound():
+                discord_playlist.get_last().url()
     
     async def __disconnect_client(self, id: int, *, rs: Optional[str] = "inatividade"):
         connection = self.__connections[id]
@@ -296,18 +373,18 @@ class DiscordController:
         global playlist
         
         if guild.id in playlist:
-            queue = playlist[guild.id]
-            if queue: playlist[guild.id] = []
+            discord_playlist: DiscordPlaylist = playlist[guild.id]
+            discord_playlist.clear()
                 
     async def queue(self, guild: Guild, url: str):
         global playlist
         
-        queue = []
+        queue = DiscordPlaylist()
         
         if guild.id in playlist:
             queue = playlist[guild.id]
 
-        queue.append(PlatformHandler(url))
+        queue.add(PlatformHandler(url))
         
         playlist[guild.id] = queue
     
