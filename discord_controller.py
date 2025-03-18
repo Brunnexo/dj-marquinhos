@@ -6,7 +6,7 @@ import random
 
 
 # Discord.py
-from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction, TextChannel
+from discord import FFmpegPCMAudio, VoiceChannel, VoiceClient, Guild, Interaction, TextChannel, Message
 
 InteractionChannel = Union[VoiceChannel, TextChannel]
 
@@ -128,10 +128,37 @@ class DiscordController:
             await connection.client.move_to(channel)
             self.__connections[guild.id].channel = channel
 
-    async def play(self, interaction: Interaction, url: str) -> Optional[str]:
+    async def __move_to_user(self, message: Message):
+        channel = message.author.voice.channel
+        guild = message.guild
+        user = message.user
+        connection = self.__connections[guild.id]
+        members = connection.channel.members
+        user_connected = len([member for member in members if member.id == user.id]) > 0
+        
+        if not user_connected and not connection.client.is_playing(): 
+            await connection.client.move_to(channel)
+            self.__connections[guild.id].channel = channel
+
+    async def interaction_play(self, interaction: Interaction, url: str) -> Optional[str]:
         guild = interaction.guild
         
-        if guild.id not in self.__connections: await self.join(interaction)
+        if guild.id not in self.__connections: await self.interaction_join(interaction)
+        
+        connection = self.__connections[guild.id]
+        
+        client = connection.client
+        
+        if not client.is_playing():
+            platform = PlatformHandler(url)
+            return self.__platform_play(platform, client, guild)
+        else: 
+            await self.queue(guild, url)
+            
+    async def message_play(self, message: Message, url: str) -> Optional[str]:
+        guild = message.guild
+        
+        if guild.id not in self.__connections: await self.message_join(message)
         
         connection = self.__connections[guild.id]
         
@@ -145,6 +172,7 @@ class DiscordController:
     
     def __platform_play(self, platform: PlatformHandler, client: VoiceClient, guild: Guild) -> str:
         source = FFmpegPCMAudio(platform.url(), **FFMPEG_OPTIONS)
+        source.read()
         client.play(source, signal_type='music', after = lambda e: self.play_next(guild, e))
         return platform.title()
     
@@ -312,7 +340,7 @@ class DiscordController:
     
     def connections_count(self): return len(self.__connections)
     
-    async def join(self, interaction: Interaction, play_intro: bool = False):
+    async def interaction_join(self, interaction: Interaction, play_intro: bool = False):
         guild = interaction.guild
         channel = interaction.user.voice.channel
         interaction_channel = interaction.channel
@@ -323,7 +351,7 @@ class DiscordController:
             if not connection.client.is_connected():
                 self.__deletions.add(guild.id)
                 await self.clean()
-                await self.join(interaction, play_intro)
+                await self.interaction_join(interaction, play_intro)
             
             await self.__move_to_user(interaction)
         else:
@@ -334,7 +362,30 @@ class DiscordController:
                 if play_intro:
                     source = FFmpegPCMAudio(source=f"./intro_{random.randint(1, 2)}.mp3", **LOCAL_FFMPEG_OPTIONS)
                     client.play(source, signal_type='music', after = lambda e: self.play_next(guild, e))
+                    
+    async def message_join(self, message: Message, play_intro: bool = False):
+        guild = message.guild
+        channel = message.author.voice.channel
+        interaction_channel = message.channel
         
+        if guild.id in self.__connections:
+            connection: DiscordConnection = self.__connections[guild.id]
+            
+            if not connection.client.is_connected():
+                self.__deletions.add(guild.id)
+                await self.clean()
+                await self.message_join(message, play_intro)
+            
+            await self.__move_to_user(message)
+        else:
+            client: VoiceClient = await channel.connect()
+            if client:
+                self.__connections[guild.id] = DiscordConnection(client, channel, interaction_channel)
+                
+                if play_intro:
+                    source = FFmpegPCMAudio(source=f"./intro_{random.randint(1, 2)}.mp3", **LOCAL_FFMPEG_OPTIONS)
+                    client.play(source, signal_type='music', after = lambda e: self.play_next(guild, e))
+                    
     async def leave(self, interaction: Interaction):
         guild = interaction.guild
         
