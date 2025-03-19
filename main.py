@@ -69,7 +69,7 @@ async def interaction_play(interaction: discord.Interaction, url: str):
     try:
         msg: WebhookMessage = await interaction.followup.send("💿 Carregando sua música...")
         
-        title = await controller.play(interaction, url)
+        title = await controller.interaction_play(interaction, url)
         
         if title:
             await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
@@ -88,7 +88,7 @@ async def interaction_play(interaction: discord.Interaction, url: str):
 async def message_play(message: discord.Message, url: str):
     try:
         msg: Message = await message.reply("💿 Carregando sua música...")
-        title = await controller.play(message, url)
+        title = await controller.message_play(message, url)
         if title:
             await msg.edit(content=None, embed=utils.embed_message(description="💿 Tocando agora!", name=title, value=url), view=get_buttons())
         else:
