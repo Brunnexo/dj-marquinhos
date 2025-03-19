@@ -107,7 +107,7 @@ async def message_play(message: discord.Message, url: str):
 async def play_command(interaction: discord.Interaction, url: str):
     if await utils.validate_interaction(interaction):
         if not PlatformHandler.valid_url(url):
-            await temp_webhook_message(interaction, message="URL **inválida**!\nVocê colocou \"**{url}**\" no campo.\n*Está literalmente escrito **URL** no campo!*\n[Clique aqui para aprender sobre URLs](https://pt.wikipedia.org/wiki/URL)".format(url=url), delay=60)
+            await temp_webhook_message(interaction, content="URL **inválida**!\nVocê colocou \"**{url}**\" no campo.\n*Está literalmente escrito **URL** no campo!*\n[Clique aqui para aprender sobre URLs](https://pt.wikipedia.org/wiki/URL)".format(url=url), delay=60)
             return
         
         await asyncio.create_task(interaction_play(interaction, url))
