@@ -252,7 +252,9 @@ def clear_cache():
 async def background_task():
     await controller.clean()
     now = datetime.now()
-    if now.hour == 0 and now.minute == 0: clear_cache()
+    
+    if (now.hour == 0 and now.minute == 0) or controller.connections_count() == 0:
+        clear_cache()
 
 @client.event
 async def on_connect():
