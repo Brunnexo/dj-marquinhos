@@ -51,7 +51,7 @@ class YouTubePlatform(SoundPlatform):
     
     def url(self) -> str:
         t1 = round(time.time() * 1000)
-        logger.info(f"Obtendo URL de stream do YouTube: {self.raw_url}")
+        logger.info(f"Obtendo URL de stream do YouTube: {self.raw_url()}")
         url = YouTubePlatform.get_stream_url(self.__url)
         t2 = round(time.time() * 1000)
         logger.info(f"Tempo de execução: {t2 - t1}ms :: URL de stream: {url}")
