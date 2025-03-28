@@ -78,7 +78,7 @@ jobs:
 
             if [ -f "requirements.txt" ]; then
               echo "Instalando dependências..."
-              pip install -r requirements.txt
+              pip install --upgrade -r requirements.txt
             fi
           else
             echo "Ambiente virtual já instalado!"
