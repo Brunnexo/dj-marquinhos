@@ -1,6 +1,6 @@
 requests==2.32.3
 discord.py==2.4.0
-pytubefix==8.10.2
+pytubefix
 PyNaCl==1.5.0
 psutil==5.9.4
 pillow==11.1.0
