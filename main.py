@@ -132,6 +132,15 @@ async def on_message(message: discord.Message):
                     if not mp3_link: await message.reply("🐻 Opa, bão!?")
                     else: await asyncio.create_task(controller.message_play(message, mp3_link))
 
+@tree.command(name="announce", description="Faz um anúncio")
+@app_commands.describe(canal="Canal de texto para enviar a mensagem", msg="Mensagem a ser enviada")
+async def announce_command(interaction: discord.Interaction, canal: discord.TextChannel, msg: str):
+    await interaction.response.defer()
+    if interaction.user.id == 189162346063593473:
+        await temp_webhook_message(interaction, content="Anúncio enviado!", delay=2)
+        await canal.send(f"Anúncio do desenvolvedor <@189162346063593473>: **{msg}**")
+    else: await temp_webhook_message(interaction, content="🚫 Você não tem permissão para usar este comando!", delay=10)
+
 @tree.command(name='queue', description="Exibir fila de reprodução")
 async def queue_command(interaction: discord.Interaction):
     if await utils.validate_interaction(interaction):

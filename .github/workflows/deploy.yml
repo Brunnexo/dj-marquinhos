@@ -78,10 +78,15 @@ jobs:
 
             if [ -f "requirements.txt" ]; then
               echo "Instalando dependências..."
-              pip install --upgrade -r requirements.txt
+              pip install -r requirements.txt
             fi
           else
             echo "Ambiente virtual já instalado!"
+            if [ -f "requirements.txt" ]; then
+              cd "${HOME}/$DIR"
+              source venv/bin/activate
+              pip install --upgrade -r requirements.txt
+            fi
           fi
 
           echo "Instalação concluída!"
